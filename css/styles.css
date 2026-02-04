@@ -5,7 +5,7 @@
 
 :root {
     --bg: #000000;
-    --panel-bg: rgba(0, 0, 0, 0.7);
+    --panel-bg: rgba(0, 0, 0, 0.85);
     --text: #ffffff;
     --text-dim: rgba(255, 255, 255, 0.5);
     --text-muted: rgba(255, 255, 255, 0.25);
@@ -49,30 +49,32 @@ html, body {
 }
 
 /* =====================================================
-   UI Panel
+   UI Panel - Left Side
    ===================================================== */
 
 .ui-panel {
     position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%);
+    top: 24px;
+    left: 24px;
     display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 12px 16px;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
     background: var(--panel-bg);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     z-index: 100;
+    min-width: 220px;
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
     transition: opacity var(--transition), transform var(--transition);
 }
 
 .ui-panel.hidden {
     opacity: 0;
-    transform: translateX(-50%) translateY(20px);
+    transform: translateX(-20px);
     pointer-events: none;
 }
 
@@ -82,10 +84,38 @@ html, body {
     gap: 8px;
 }
 
-.ui-section.actions {
-    margin-left: 8px;
-    padding-left: 16px;
-    border-left: 1px solid var(--border);
+.ui-section.column {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+}
+
+.ui-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ui-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 0;
+}
+
+/* Labels */
+.ui-label {
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+}
+
+.ui-value {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--accent-purple);
+    font-variant-numeric: tabular-nums;
 }
 
 /* Buttons */
@@ -99,10 +129,12 @@ html, body {
     border-radius: var(--radius-sm);
     color: var(--text-dim);
     font-family: inherit;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 500;
     cursor: pointer;
     transition: all var(--transition);
+    flex: 1;
+    justify-content: center;
 }
 
 .ui-btn:hover {
@@ -127,8 +159,8 @@ html, body {
 }
 
 .ui-btn svg {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
 }
 
 .file-label {
@@ -136,22 +168,15 @@ html, body {
 }
 
 /* Select */
-.ui-label {
-    font-size: 11px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-muted);
-}
-
 .ui-select {
+    width: 100%;
     padding: 8px 28px 8px 10px;
-    background: transparent;
+    background: rgba(255, 255, 255, 0.03);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     color: var(--text);
     font-family: inherit;
-    font-size: 12px;
+    font-size: 11px;
     cursor: pointer;
     appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.4)' stroke-width='2'%3E%3Cpolyline points='6,9 12,15 18,9'/%3E%3C/svg%3E");
@@ -171,6 +196,46 @@ html, body {
 
 .ui-select option {
     background: #111;
+    padding: 8px;
+}
+
+.ui-select optgroup {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+/* Range slider */
+.ui-range {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    appearance: none;
+    cursor: pointer;
+}
+
+.ui-range::-webkit-slider-thumb {
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    background: var(--accent-purple);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.ui-range::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+    box-shadow: 0 0 10px var(--accent-glow);
+}
+
+.ui-range::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    background: var(--accent-purple);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
 }
 
 /* Audio Player */
@@ -178,10 +243,6 @@ html, body {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    padding: 0 12px;
-    border-left: 1px solid var(--border);
-    border-right: 1px solid var(--border);
-    min-width: 200px;
 }
 
 .audio-player.hidden {
@@ -189,12 +250,11 @@ html, body {
 }
 
 .audio-player #track-name {
-    font-size: 11px;
+    font-size: 10px;
     color: var(--text-dim);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 180px;
 }
 
 .player-row {
@@ -241,7 +301,7 @@ html, body {
 }
 
 .progress-bar {
-    height: 3px;
+    height: 4px;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 2px;
     overflow: hidden;
@@ -255,36 +315,25 @@ html, body {
     transition: width 0.1s linear;
 }
 
-.time-row {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 4px;
-    font-size: 10px;
-    color: var(--text-muted);
-    font-variant-numeric: tabular-nums;
-}
-
 /* Hide Button */
 .hide-btn {
     position: absolute;
-    top: -12px;
-    right: -12px;
-    width: 24px;
-    height: 24px;
+    top: 8px;
+    right: 8px;
+    width: 20px;
+    height: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 50%;
-    color: var(--text-dim);
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
     cursor: pointer;
     transition: all var(--transition);
 }
 
 .hide-btn:hover {
     color: var(--text);
-    border-color: rgba(255, 255, 255, 0.3);
 }
 
 .hide-btn svg {
@@ -295,18 +344,17 @@ html, body {
 /* Show Button */
 .show-btn {
     position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 48px;
-    height: 48px;
+    top: 24px;
+    left: 24px;
+    width: 44px;
+    height: 44px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: var(--panel-bg);
     backdrop-filter: blur(20px);
     border: 1px solid var(--border);
-    border-radius: 50%;
+    border-radius: var(--radius);
     color: var(--text-dim);
     cursor: pointer;
     z-index: 100;
@@ -326,7 +374,7 @@ html, body {
 .show-btn.hidden {
     opacity: 0;
     pointer-events: none;
-    transform: translateX(-50%) scale(0.8);
+    transform: scale(0.8);
 }
 
 /* Loader */
@@ -359,29 +407,37 @@ html, body {
     to { transform: rotate(360deg); }
 }
 
+/* Scrollbar */
+.ui-panel::-webkit-scrollbar {
+    width: 4px;
+}
+
+.ui-panel::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.ui-panel::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 2px;
+}
+
 /* Utility */
 .hidden {
     display: none !important;
 }
 
 /* Responsive */
-@media (max-width: 700px) {
+@media (max-width: 600px) {
     .ui-panel {
-        flex-wrap: wrap;
-        max-width: calc(100vw - 32px);
-        justify-content: center;
+        top: auto;
+        bottom: 16px;
+        left: 16px;
+        right: 16px;
+        max-height: 50vh;
     }
     
-    .ui-section.actions {
-        border-left: none;
-        padding-left: 0;
-        margin-left: 0;
-    }
-    
-    .audio-player {
-        border: none;
-        width: 100%;
-        padding: 8px 0 0;
-        border-top: 1px solid var(--border);
+    .show-btn {
+        top: auto;
+        bottom: 16px;
     }
 }

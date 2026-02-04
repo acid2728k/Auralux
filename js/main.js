@@ -22,23 +22,14 @@ class Auralux {
         try {
             console.log('[Auralux] Starting...');
 
-            // UI
             this.ui = new UIController();
-
-            // Audio
             this.audioAnalyzer = new AudioAnalyzer();
-
-            // Visualizer
+            
             const container = document.getElementById('canvas-container');
             this.visualizer = new Visualizer(container);
 
-            // Callbacks
             this.setupCallbacks();
-
-            // Start loop
             this.start();
-
-            // Hide loader
             this.ui.hideLoader();
 
             console.log('[Auralux] Ready');
@@ -49,7 +40,7 @@ class Auralux {
     }
 
     setupCallbacks() {
-        // Microphone
+        // Audio: Microphone
         this.ui.on('onMicrophoneClick', async () => {
             try {
                 await this.audioAnalyzer.connectMicrophone();
@@ -61,7 +52,7 @@ class Auralux {
             }
         });
 
-        // File
+        // Audio: File
         this.ui.on('onFileSelect', async (file) => {
             try {
                 const info = await this.audioAnalyzer.connectAudioFile(file);
@@ -88,26 +79,48 @@ class Auralux {
             }
         });
 
-        // Play/Pause
+        // Audio: Play/Pause
         this.ui.on('onPlayPause', () => {
             const playing = this.audioAnalyzer.togglePlayPause();
             this.ui.setPlayingState(playing);
         });
 
-        // Seek
+        // Audio: Seek
         this.ui.on('onSeek', (pos) => {
             this.audioAnalyzer.seek(pos);
         });
 
-        // Geometry
+        // Visualizer: Geometry
         this.ui.on('onGeometryChange', (type) => {
             this.visualizer.setGeometry(type);
         });
 
-        // Randomize
+        // Visualizer: Detail
+        this.ui.on('onDetailChange', (level) => {
+            this.visualizer.setDetail(level);
+        });
+
+        // Visualizer: Surround Type
+        this.ui.on('onSurroundTypeChange', (type) => {
+            this.visualizer.setSurroundType(type);
+        });
+
+        // Visualizer: Surround Count
+        this.ui.on('onSurroundCountChange', (count) => {
+            this.visualizer.setSurroundCount(count);
+        });
+
+        // Visualizer: Surround Complexity
+        this.ui.on('onSurroundComplexityChange', (complexity) => {
+            this.visualizer.setSurroundComplexity(complexity);
+        });
+
+        // Visualizer: Randomize
         this.ui.on('onRandomize', () => {
-            const newGeom = this.visualizer.randomize();
-            this.ui.setGeometrySelect(newGeom);
+            const result = this.visualizer.randomize();
+            this.ui.setGeometrySelect(result.geometry);
+            this.ui.setDetailValue(result.detail);
+            this.ui.setSurroundSelect(result.surround);
         });
     }
 

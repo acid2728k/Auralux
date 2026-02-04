@@ -20,7 +20,7 @@
 <body>
     <div id="canvas-container"></div>
     
-    <!-- Minimal UI Panel -->
+    <!-- UI Panel -->
     <div id="ui-panel" class="ui-panel">
         <!-- Audio Source -->
         <div class="ui-section">
@@ -60,29 +60,97 @@
                     <div class="progress-bar">
                         <div id="progress-fill" class="progress-fill"></div>
                     </div>
-                    <div class="time-row">
-                        <span id="time-current">0:00</span>
-                        <span id="time-total">0:00</span>
-                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Geometry Selection -->
-        <div class="ui-section">
-            <span class="ui-label">Geometry</span>
+        <!-- Divider -->
+        <div class="ui-divider"></div>
+
+        <!-- Center Geometry -->
+        <div class="ui-section column">
+            <span class="ui-label">Center Shape</span>
             <select id="select-geometry" class="ui-select">
-                <option value="icosahedron">Icosahedron</option>
-                <option value="octahedron">Octahedron</option>
-                <option value="dodecahedron">Dodecahedron</option>
-                <option value="tetrahedron">Tetrahedron</option>
-                <option value="sphere">Sphere</option>
-                <option value="torus">Torus Knot</option>
+                <optgroup label="Platonic Solids">
+                    <option value="tetrahedron">Tetrahedron</option>
+                    <option value="hexahedron">Hexahedron (Cube)</option>
+                    <option value="octahedron">Octahedron</option>
+                    <option value="dodecahedron">Dodecahedron</option>
+                    <option value="icosahedron" selected>Icosahedron</option>
+                </optgroup>
+                <optgroup label="Complex Polyhedra">
+                    <option value="stellatedOcta">Stellated Octahedron</option>
+                    <option value="stellatedDodeca">Stellated Dodecahedron</option>
+                    <option value="truncatedIcosa">Truncated Icosahedron</option>
+                    <option value="rhombicubocta">Rhombicuboctahedron</option>
+                    <option value="snubCube">Snub Cube</option>
+                </optgroup>
+                <optgroup label="Paradox Shapes">
+                    <option value="penrose">Penrose Triangle</option>
+                    <option value="kleinBottle">Klein Bottle</option>
+                    <option value="mobiusStrip">Möbius Strip</option>
+                    <option value="hyperCube">Hypercube (4D)</option>
+                    <option value="torusKnot">Torus Knot</option>
+                </optgroup>
+                <optgroup label="Fractal-like">
+                    <option value="sierpinski">Sierpinski Tetrahedron</option>
+                    <option value="mengerSponge">Menger Sponge</option>
+                    <option value="geodesic">Geodesic Sphere</option>
+                </optgroup>
             </select>
         </div>
 
+        <!-- Center Detail -->
+        <div class="ui-section column">
+            <div class="ui-row">
+                <span class="ui-label">Detail</span>
+                <span id="detail-value" class="ui-value">3</span>
+            </div>
+            <input type="range" id="range-detail" class="ui-range" min="1" max="6" step="1" value="3">
+        </div>
+
+        <!-- Divider -->
+        <div class="ui-divider"></div>
+
+        <!-- Surround Type -->
+        <div class="ui-section column">
+            <span class="ui-label">Surround Shape</span>
+            <select id="select-surround" class="ui-select">
+                <option value="orbitalRings">Orbital Rings</option>
+                <option value="floatingPolyhedra">Floating Polyhedra</option>
+                <option value="wireframeCage">Wireframe Cage</option>
+                <option value="spiralArms">Spiral Arms</option>
+                <option value="particleCloud">Particle Cloud</option>
+                <option value="concentricSpheres">Concentric Spheres</option>
+                <option value="dnaHelix">DNA Helix</option>
+                <option value="atomicOrbits">Atomic Orbits</option>
+                <option value="none">None</option>
+            </select>
+        </div>
+
+        <!-- Surround Count -->
+        <div class="ui-section column">
+            <div class="ui-row">
+                <span class="ui-label">Count</span>
+                <span id="surround-count-value" class="ui-value">24</span>
+            </div>
+            <input type="range" id="range-surround-count" class="ui-range" min="6" max="64" step="2" value="24">
+        </div>
+
+        <!-- Surround Complexity -->
+        <div class="ui-section column">
+            <div class="ui-row">
+                <span class="ui-label">Complexity</span>
+                <span id="surround-complexity-value" class="ui-value">2</span>
+            </div>
+            <input type="range" id="range-surround-complexity" class="ui-range" min="0" max="4" step="1" value="2">
+        </div>
+
+        <!-- Divider -->
+        <div class="ui-divider"></div>
+
         <!-- Actions -->
-        <div class="ui-section actions">
+        <div class="ui-section">
             <button id="btn-randomize" class="ui-btn accent">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                     <polyline points="16,3 21,3 21,8"/>
@@ -100,7 +168,7 @@
                     <line x1="21" y1="3" x2="14" y2="10"/>
                     <line x1="3" y1="21" x2="10" y2="14"/>
                 </svg>
-                <span>Fullscreen</span>
+                <span>Full</span>
             </button>
         </div>
 

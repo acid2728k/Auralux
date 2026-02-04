@@ -1,6 +1,6 @@
 /**
  * UIController Module
- * Minimal UI for Auralux
+ * Extended UI controls for Auralux
  */
 
 export class UIController {
@@ -16,9 +16,20 @@ export class UIController {
             btnPlay: document.getElementById('btn-play'),
             progressBar: document.querySelector('.progress-bar'),
             progressFill: document.getElementById('progress-fill'),
-            timeCurrent: document.getElementById('time-current'),
-            timeTotal: document.getElementById('time-total'),
+            
+            // Geometry
             selectGeometry: document.getElementById('select-geometry'),
+            rangeDetail: document.getElementById('range-detail'),
+            detailValue: document.getElementById('detail-value'),
+            
+            // Surround
+            selectSurround: document.getElementById('select-surround'),
+            rangeSurroundCount: document.getElementById('range-surround-count'),
+            surroundCountValue: document.getElementById('surround-count-value'),
+            rangeSurroundComplexity: document.getElementById('range-surround-complexity'),
+            surroundComplexityValue: document.getElementById('surround-complexity-value'),
+            
+            // Actions
             btnRandomize: document.getElementById('btn-randomize'),
             btnFullscreen: document.getElementById('btn-fullscreen'),
             loader: document.getElementById('loader')
@@ -30,6 +41,10 @@ export class UIController {
             onPlayPause: null,
             onSeek: null,
             onGeometryChange: null,
+            onDetailChange: null,
+            onSurroundTypeChange: null,
+            onSurroundCountChange: null,
+            onSurroundComplexityChange: null,
             onRandomize: null
         };
 
@@ -38,7 +53,7 @@ export class UIController {
     }
 
     init() {
-        // Hide/Show UI
+        // Hide/Show
         this.elements.btnHide.addEventListener('click', () => this.hideUI());
         this.elements.btnShow.addEventListener('click', () => this.showUI());
 
@@ -50,7 +65,7 @@ export class UIController {
             this.callbacks.onMicrophoneClick?.();
         });
 
-        // File input
+        // File
         this.elements.audioFile.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) this.callbacks.onFileSelect?.(file);
@@ -61,16 +76,42 @@ export class UIController {
             this.callbacks.onPlayPause?.();
         });
 
-        // Progress seek
+        // Progress
         this.elements.progressBar.addEventListener('click', (e) => {
             const rect = this.elements.progressBar.getBoundingClientRect();
             const pos = (e.clientX - rect.left) / rect.width;
             this.callbacks.onSeek?.(Math.max(0, Math.min(1, pos)));
         });
 
-        // Geometry select
+        // Geometry
         this.elements.selectGeometry.addEventListener('change', (e) => {
             this.callbacks.onGeometryChange?.(e.target.value);
+        });
+
+        // Detail
+        this.elements.rangeDetail.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            this.elements.detailValue.textContent = val;
+            this.callbacks.onDetailChange?.(val);
+        });
+
+        // Surround Type
+        this.elements.selectSurround.addEventListener('change', (e) => {
+            this.callbacks.onSurroundTypeChange?.(e.target.value);
+        });
+
+        // Surround Count
+        this.elements.rangeSurroundCount.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            this.elements.surroundCountValue.textContent = val;
+            this.callbacks.onSurroundCountChange?.(val);
+        });
+
+        // Surround Complexity
+        this.elements.rangeSurroundComplexity.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            this.elements.surroundComplexityValue.textContent = val;
+            this.callbacks.onSurroundComplexityChange?.(val);
         });
 
         // Randomize
@@ -134,7 +175,7 @@ export class UIController {
     updateFullscreenBtn() {
         const isFs = document.fullscreenElement || document.webkitFullscreenElement;
         const span = this.elements.btnFullscreen.querySelector('span');
-        if (span) span.textContent = isFs ? 'Exit' : 'Fullscreen';
+        if (span) span.textContent = isFs ? 'Exit' : 'Full';
     }
 
     handleKeyboard(e) {
@@ -164,9 +205,6 @@ export class UIController {
     showAudioPlayer(trackInfo) {
         this.elements.audioPlayer.classList.remove('hidden');
         this.elements.trackName.textContent = trackInfo.name || '—';
-        this.elements.timeTotal.textContent = this.formatTime(trackInfo.duration || 0);
-        this.elements.timeCurrent.textContent = '0:00';
-        this.elements.progressFill.style.width = '0%';
     }
 
     hideAudioPlayer() {
@@ -176,7 +214,6 @@ export class UIController {
     setPlayingState(isPlaying) {
         const playIcon = this.elements.btnPlay.querySelector('.icon-play');
         const pauseIcon = this.elements.btnPlay.querySelector('.icon-pause');
-        
         playIcon.classList.toggle('hidden', isPlaying);
         pauseIcon.classList.toggle('hidden', !isPlaying);
     }
@@ -184,18 +221,20 @@ export class UIController {
     updateProgress(currentTime, duration) {
         const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
         this.elements.progressFill.style.width = `${progress}%`;
-        this.elements.timeCurrent.textContent = this.formatTime(currentTime);
     }
 
+    // Update UI from randomize
     setGeometrySelect(value) {
         this.elements.selectGeometry.value = value;
     }
 
-    formatTime(seconds) {
-        if (!isFinite(seconds)) return '0:00';
-        const m = Math.floor(seconds / 60);
-        const s = Math.floor(seconds % 60);
-        return `${m}:${s.toString().padStart(2, '0')}`;
+    setDetailValue(value) {
+        this.elements.rangeDetail.value = value;
+        this.elements.detailValue.textContent = value;
+    }
+
+    setSurroundSelect(value) {
+        this.elements.selectSurround.value = value;
     }
 
     hideLoader() {
