@@ -3,193 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auralux — Audio Visualizer</title>
+    <title>Auralux</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
     <div id="canvas-container"></div>
     
-    <!-- Main UI Panel -->
+    <!-- Minimal UI Panel -->
     <div id="ui-panel" class="ui-panel">
-        <!-- Header -->
-        <div class="panel-header">
-            <span class="panel-title">Settings</span>
-            <button id="btn-hide-ui" class="icon-btn" title="Hide UI">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                    <circle cx="12" cy="12" r="3"/>
+        <!-- Audio Source -->
+        <div class="ui-section">
+            <button id="btn-microphone" class="ui-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                    <line x1="12" y1="19" x2="12" y2="23"/>
                 </svg>
+                <span>Mic</span>
             </button>
+            <label class="ui-btn file-label">
+                <input type="file" id="audio-file" accept="audio/*" hidden>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M9 18V5l12-2v13"/>
+                    <circle cx="6" cy="18" r="3"/>
+                    <circle cx="18" cy="16" r="3"/>
+                </svg>
+                <span>Audio</span>
+            </label>
         </div>
 
-        <!-- Audio Controls -->
-        <div class="panel-section">
-            <div class="section-title">Audio Source</div>
-            <div class="audio-controls">
-                <button id="btn-microphone" class="control-btn">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                        <line x1="12" y1="19" x2="12" y2="23"/>
-                        <line x1="8" y1="23" x2="16" y2="23"/>
+        <!-- Audio Player -->
+        <div id="audio-player" class="audio-player hidden">
+            <span id="track-name">—</span>
+            <div class="player-row">
+                <button id="btn-play" class="play-btn">
+                    <svg class="icon-play" viewBox="0 0 24 24" fill="currentColor">
+                        <polygon points="5,3 19,12 5,21"/>
                     </svg>
-                    <span>Microphone</span>
+                    <svg class="icon-pause hidden" viewBox="0 0 24 24" fill="currentColor">
+                        <rect x="6" y="4" width="4" height="16"/>
+                        <rect x="14" y="4" width="4" height="16"/>
+                    </svg>
                 </button>
-                <label class="control-btn file-input-label">
-                    <input type="file" id="audio-file-input" accept="audio/*" hidden>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M9 18V5l12-2v13"/>
-                        <circle cx="6" cy="18" r="3"/>
-                        <circle cx="18" cy="16" r="3"/>
-                    </svg>
-                    <span>Load File</span>
-                </label>
-            </div>
-            <!-- Audio Player (hidden by default) -->
-            <div id="audio-player" class="audio-player hidden">
-                <div class="track-info">
-                    <span id="track-name">No track loaded</span>
-                </div>
-                <div class="player-controls">
-                    <button id="btn-play" class="player-btn">
-                        <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor">
-                            <polygon points="5,3 19,12 5,21"/>
-                        </svg>
-                        <svg class="pause-icon hidden" viewBox="0 0 24 24" fill="currentColor">
-                            <rect x="6" y="4" width="4" height="16"/>
-                            <rect x="14" y="4" width="4" height="16"/>
-                        </svg>
-                    </button>
-                    <div class="progress-container">
-                        <div class="progress-bar">
-                            <div id="progress-fill" class="progress-fill"></div>
-                        </div>
-                        <div class="time-display">
-                            <span id="current-time">0:00</span>
-                            <span id="duration">0:00</span>
-                        </div>
+                <div class="progress-wrap">
+                    <div class="progress-bar">
+                        <div id="progress-fill" class="progress-fill"></div>
+                    </div>
+                    <div class="time-row">
+                        <span id="time-current">0:00</span>
+                        <span id="time-total">0:00</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Central Element Settings -->
-        <div class="panel-section">
-            <div class="section-title">Central Element</div>
-            <div class="setting-row">
-                <label>Shape</label>
-                <select id="select-center-shape" class="select-input">
-                    <option value="ring">Ring</option>
-                    <option value="sphere">Sphere</option>
-                    <option value="torus">Torus</option>
-                    <option value="octahedron">Octahedron</option>
-                    <option value="icosahedron">Icosahedron</option>
-                    <option value="dodecahedron">Dodecahedron</option>
-                </select>
-            </div>
-            <div class="setting-row">
-                <label>Size</label>
-                <input type="range" id="range-center-size" class="range-input" min="0.5" max="2" step="0.1" value="1">
-            </div>
-            <div class="setting-row">
-                <label>Color</label>
-                <select id="select-center-color" class="select-input">
-                    <option value="gradient">Gradient</option>
-                    <option value="purple">Purple</option>
-                    <option value="cyan">Cyan</option>
-                    <option value="orange">Orange</option>
-                    <option value="white">White</option>
-                </select>
-            </div>
+        <!-- Geometry Selection -->
+        <div class="ui-section">
+            <span class="ui-label">Geometry</span>
+            <select id="select-geometry" class="ui-select">
+                <option value="icosahedron">Icosahedron</option>
+                <option value="octahedron">Octahedron</option>
+                <option value="dodecahedron">Dodecahedron</option>
+                <option value="tetrahedron">Tetrahedron</option>
+                <option value="sphere">Sphere</option>
+                <option value="torus">Torus Knot</option>
+            </select>
         </div>
 
-        <!-- Surrounding Elements Settings -->
-        <div class="panel-section">
-            <div class="section-title">Surrounding Elements</div>
-            <div class="setting-row">
-                <label>Type</label>
-                <select id="select-surround-type" class="select-input">
-                    <option value="rays">Rays</option>
-                    <option value="particles">Particles</option>
-                    <option value="rings">Rings</option>
-                    <option value="dots">Dots</option>
-                    <option value="waves">Waves</option>
-                    <option value="none">None</option>
-                </select>
-            </div>
-            <div class="setting-row">
-                <label>Density</label>
-                <input type="range" id="range-surround-density" class="range-input" min="0.5" max="2" step="0.1" value="1">
-            </div>
-        </div>
-
-        <!-- Middle Band Settings -->
-        <div class="panel-section">
-            <div class="section-title">Audio Band</div>
-            <div class="setting-row">
-                <label>Style</label>
-                <select id="select-band-style" class="select-input">
-                    <option value="waveform">Waveform</option>
-                    <option value="bars">Bars</option>
-                    <option value="line">Line</option>
-                    <option value="mirror">Mirror</option>
-                    <option value="circular">Circular</option>
-                    <option value="none">None</option>
-                </select>
-            </div>
-            <div class="setting-row">
-                <label>Intensity</label>
-                <input type="range" id="range-band-intensity" class="range-input" min="0.5" max="3" step="0.1" value="1.5">
-            </div>
-        </div>
-
-        <!-- General Settings -->
-        <div class="panel-section">
-            <div class="section-title">General</div>
-            <div class="setting-row">
-                <label>Sensitivity</label>
-                <input type="range" id="range-sensitivity" class="range-input" min="0.5" max="3" step="0.1" value="1.5">
-            </div>
-            <div class="setting-row">
-                <label>Rotation</label>
-                <input type="range" id="range-rotation" class="range-input" min="0" max="2" step="0.1" value="0.3">
-            </div>
-        </div>
-
-        <!-- Stats -->
-        <div class="panel-section">
-            <div class="section-title">Audio Stats</div>
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <div class="stat-label">Amplitude</div>
-                    <div id="stat-amplitude" class="stat-value">0.00</div>
-                    <div class="stat-bar"><div id="bar-amplitude" class="stat-bar-fill"></div></div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">Bass</div>
-                    <div id="stat-bass" class="stat-value">0.00</div>
-                    <div class="stat-bar"><div id="bar-bass" class="stat-bar-fill"></div></div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">Mid</div>
-                    <div id="stat-mid" class="stat-value">0.00</div>
-                    <div class="stat-bar"><div id="bar-mid" class="stat-bar-fill"></div></div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">Treble</div>
-                    <div id="stat-treble" class="stat-value">0.00</div>
-                    <div class="stat-bar"><div id="bar-treble" class="stat-bar-fill"></div></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Footer Actions -->
-        <div class="panel-footer">
-            <button id="btn-fullscreen" class="action-btn">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <!-- Actions -->
+        <div class="ui-section actions">
+            <button id="btn-randomize" class="ui-btn accent">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <polyline points="16,3 21,3 21,8"/>
+                    <line x1="4" y1="20" x2="21" y2="3"/>
+                    <polyline points="21,16 21,21 16,21"/>
+                    <line x1="15" y1="15" x2="21" y2="21"/>
+                    <line x1="4" y1="4" x2="9" y2="9"/>
+                </svg>
+                <span>Random</span>
+            </button>
+            <button id="btn-fullscreen" class="ui-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                     <polyline points="15,3 21,3 21,9"/>
                     <polyline points="9,21 3,21 3,15"/>
                     <line x1="21" y1="3" x2="14" y2="10"/>
@@ -198,22 +95,27 @@
                 <span>Fullscreen</span>
             </button>
         </div>
+
+        <!-- Hide Button -->
+        <button id="btn-hide" class="hide-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+        </button>
     </div>
 
-    <!-- Show UI Button (visible when UI is hidden) -->
-    <button id="btn-show-ui" class="show-ui-btn hidden">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+    <!-- Show UI Button -->
+    <button id="btn-show" class="show-btn hidden">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <circle cx="12" cy="12" r="3"/>
+            <path d="M12 1v6M12 17v6M4.22 4.22l4.24 4.24M15.54 15.54l4.24 4.24M1 12h6M17 12h6M4.22 19.78l4.24-4.24M15.54 8.46l4.24-4.24"/>
         </svg>
     </button>
 
-    <!-- Loading Overlay -->
-    <div id="loading-overlay" class="loading-overlay">
-        <div class="loader">
-            <div class="loader-ring"></div>
-            <span>Initializing...</span>
-        </div>
+    <!-- Loading -->
+    <div id="loader" class="loader">
+        <div class="loader-ring"></div>
     </div>
 
     <script type="module" src="js/main.js"></script>

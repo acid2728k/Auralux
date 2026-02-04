@@ -11,129 +11,112 @@ class Auralux {
     constructor() {
         this.audioAnalyzer = null;
         this.visualizer = null;
-        this.uiController = null;
+        this.ui = null;
         this.animationId = null;
         this.isRunning = false;
-        
+
         this.init();
     }
 
-    /**
-     * Initialize application
-     */
     async init() {
         try {
-            console.log('[Auralux] Initializing...');
-            
-            // Initialize UI Controller
-            this.uiController = new UIController();
-            
-            // Initialize Audio Analyzer
+            console.log('[Auralux] Starting...');
+
+            // UI
+            this.ui = new UIController();
+
+            // Audio
             this.audioAnalyzer = new AudioAnalyzer();
-            
-            // Initialize Visualizer
+
+            // Visualizer
             const container = document.getElementById('canvas-container');
             this.visualizer = new Visualizer(container);
-            
-            // Setup UI callbacks
-            this.setupUICallbacks();
-            
-            // Start animation loop
-            this.startAnimation();
-            
-            // Hide loading overlay
-            this.uiController.hideLoading();
-            
-            console.log('[Auralux] Initialized successfully');
-        } catch (error) {
-            console.error('[Auralux] Initialization failed:', error);
-            this.uiController?.showError('Failed to initialize application: ' + error.message);
+
+            // Callbacks
+            this.setupCallbacks();
+
+            // Start loop
+            this.start();
+
+            // Hide loader
+            this.ui.hideLoader();
+
+            console.log('[Auralux] Ready');
+        } catch (err) {
+            console.error('[Auralux] Init failed:', err);
+            this.ui?.showError('Failed to initialize: ' + err.message);
         }
     }
 
-    /**
-     * Setup UI event callbacks
-     */
-    setupUICallbacks() {
-        // Microphone button
-        this.uiController.on('onMicrophoneClick', async () => {
+    setupCallbacks() {
+        // Microphone
+        this.ui.on('onMicrophoneClick', async () => {
             try {
                 await this.audioAnalyzer.connectMicrophone();
-                this.uiController.setMicrophoneActive(true);
-                this.uiController.hideAudioPlayer();
-                console.log('[Auralux] Microphone connected');
-            } catch (error) {
-                this.uiController.showError('Microphone access denied. Please allow microphone access to use this feature.');
-                this.uiController.setMicrophoneActive(false);
+                this.ui.setMicrophoneActive(true);
+                this.ui.hideAudioPlayer();
+            } catch (err) {
+                this.ui.showError('Microphone access denied');
+                this.ui.setMicrophoneActive(false);
             }
         });
-        
-        // File selection
-        this.uiController.on('onFileSelect', async (file) => {
+
+        // File
+        this.ui.on('onFileSelect', async (file) => {
             try {
-                const trackInfo = await this.audioAnalyzer.connectAudioFile(file);
-                this.uiController.setMicrophoneActive(false);
-                this.uiController.showAudioPlayer(trackInfo);
-                
-                const audioElement = this.audioAnalyzer.getAudioElement();
-                if (audioElement) {
-                    audioElement.addEventListener('play', () => {
-                        this.uiController.setPlayingState(true);
+                const info = await this.audioAnalyzer.connectAudioFile(file);
+                this.ui.setMicrophoneActive(false);
+                this.ui.showAudioPlayer(info);
+
+                const audio = this.audioAnalyzer.getAudioElement();
+                if (audio) {
+                    audio.addEventListener('play', () => this.ui.setPlayingState(true));
+                    audio.addEventListener('pause', () => this.ui.setPlayingState(false));
+                    audio.addEventListener('ended', () => {
+                        this.ui.setPlayingState(false);
+                        this.ui.updateProgress(0, info.duration);
                     });
-                    
-                    audioElement.addEventListener('pause', () => {
-                        this.uiController.setPlayingState(false);
-                    });
-                    
-                    audioElement.addEventListener('ended', () => {
-                        this.uiController.setPlayingState(false);
-                        this.uiController.updateProgress(0, trackInfo.duration);
-                    });
-                    
-                    audioElement.addEventListener('timeupdate', () => {
-                        this.uiController.updateProgress(
+                    audio.addEventListener('timeupdate', () => {
+                        this.ui.updateProgress(
                             this.audioAnalyzer.getCurrentTime(),
                             this.audioAnalyzer.getDuration()
                         );
                     });
                 }
-                
-                console.log('[Auralux] Audio file loaded:', trackInfo.name);
-            } catch (error) {
-                this.uiController.showError('Failed to load audio file: ' + error.message);
+            } catch (err) {
+                this.ui.showError('Failed to load audio: ' + err.message);
             }
         });
-        
+
         // Play/Pause
-        this.uiController.on('onPlayPause', () => {
-            const isPlaying = this.audioAnalyzer.togglePlayPause();
-            this.uiController.setPlayingState(isPlaying);
+        this.ui.on('onPlayPause', () => {
+            const playing = this.audioAnalyzer.togglePlayPause();
+            this.ui.setPlayingState(playing);
         });
-        
+
         // Seek
-        this.uiController.on('onSeek', (position) => {
-            this.audioAnalyzer.seek(position);
+        this.ui.on('onSeek', (pos) => {
+            this.audioAnalyzer.seek(pos);
         });
-        
-        // Settings change
-        this.uiController.on('onSettingsChange', (settings) => {
-            this.visualizer.updateSettings(settings);
-            console.log('[Auralux] Settings updated:', settings);
+
+        // Geometry
+        this.ui.on('onGeometryChange', (type) => {
+            this.visualizer.setGeometry(type);
+        });
+
+        // Randomize
+        this.ui.on('onRandomize', () => {
+            const newGeom = this.visualizer.randomize();
+            this.ui.setGeometrySelect(newGeom);
         });
     }
 
-    /**
-     * Start animation loop
-     */
-    startAnimation() {
+    start() {
         this.isRunning = true;
-        this.animate();
+        this.loop();
     }
 
-    /**
-     * Stop animation loop
-     */
-    stopAnimation() {
+    stop() {
         this.isRunning = false;
         if (this.animationId) {
             cancelAnimationFrame(this.animationId);
@@ -141,45 +124,30 @@ class Auralux {
         }
     }
 
-    /**
-     * Animation loop
-     */
-    animate() {
+    loop() {
         if (!this.isRunning) return;
-        
-        this.animationId = requestAnimationFrame(() => this.animate());
-        
+        this.animationId = requestAnimationFrame(() => this.loop());
+
         if (this.audioAnalyzer.sourceType) {
-            const audioData = this.audioAnalyzer.analyze();
-            this.visualizer.update(audioData);
-            this.uiController.updateStats(audioData);
+            const data = this.audioAnalyzer.analyze();
+            this.visualizer.update(data);
         } else {
             this.visualizer.renderIdle();
-            this.uiController.updateStats({
-                amplitude: 0,
-                bass: 0,
-                mid: 0,
-                treble: 0
-            });
         }
     }
 
-    /**
-     * Cleanup
-     */
     destroy() {
-        this.stopAnimation();
+        this.stop();
         this.audioAnalyzer?.destroy();
         this.visualizer?.destroy();
     }
 }
 
-// Initialize application when DOM is ready
+// Init
 document.addEventListener('DOMContentLoaded', () => {
     window.auralux = new Auralux();
 });
 
-// Handle page unload
 window.addEventListener('beforeunload', () => {
     window.auralux?.destroy();
 });

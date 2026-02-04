@@ -1,179 +1,93 @@
 /**
  * UIController Module
- * Handles all UI interactions and state management
+ * Minimal UI for Auralux
  */
 
 export class UIController {
     constructor() {
-        // DOM Elements
         this.elements = {
-            // Main panel
-            uiPanel: document.getElementById('ui-panel'),
-            btnHideUI: document.getElementById('btn-hide-ui'),
-            btnShowUI: document.getElementById('btn-show-ui'),
-            btnFullscreen: document.getElementById('btn-fullscreen'),
-            
-            // Audio controls
+            panel: document.getElementById('ui-panel'),
+            btnHide: document.getElementById('btn-hide'),
+            btnShow: document.getElementById('btn-show'),
             btnMicrophone: document.getElementById('btn-microphone'),
-            audioFileInput: document.getElementById('audio-file-input'),
+            audioFile: document.getElementById('audio-file'),
             audioPlayer: document.getElementById('audio-player'),
             trackName: document.getElementById('track-name'),
             btnPlay: document.getElementById('btn-play'),
-            progressFill: document.getElementById('progress-fill'),
-            currentTime: document.getElementById('current-time'),
-            duration: document.getElementById('duration'),
             progressBar: document.querySelector('.progress-bar'),
-            
-            // Central element settings
-            selectCenterShape: document.getElementById('select-center-shape'),
-            rangeCenterSize: document.getElementById('range-center-size'),
-            selectCenterColor: document.getElementById('select-center-color'),
-            
-            // Surrounding elements settings
-            selectSurroundType: document.getElementById('select-surround-type'),
-            rangeSurroundDensity: document.getElementById('range-surround-density'),
-            
-            // Audio band settings
-            selectBandStyle: document.getElementById('select-band-style'),
-            rangeBandIntensity: document.getElementById('range-band-intensity'),
-            
-            // General settings
-            rangeSensitivity: document.getElementById('range-sensitivity'),
-            rangeRotation: document.getElementById('range-rotation'),
-            
-            // Stats
-            statAmplitude: document.getElementById('stat-amplitude'),
-            statBass: document.getElementById('stat-bass'),
-            statMid: document.getElementById('stat-mid'),
-            statTreble: document.getElementById('stat-treble'),
-            barAmplitude: document.getElementById('bar-amplitude'),
-            barBass: document.getElementById('bar-bass'),
-            barMid: document.getElementById('bar-mid'),
-            barTreble: document.getElementById('bar-treble'),
-            
-            // Loading
-            loadingOverlay: document.getElementById('loading-overlay')
+            progressFill: document.getElementById('progress-fill'),
+            timeCurrent: document.getElementById('time-current'),
+            timeTotal: document.getElementById('time-total'),
+            selectGeometry: document.getElementById('select-geometry'),
+            btnRandomize: document.getElementById('btn-randomize'),
+            btnFullscreen: document.getElementById('btn-fullscreen'),
+            loader: document.getElementById('loader')
         };
-        
-        // State
-        this.isUIVisible = true;
-        this.isPlaying = false;
-        
-        // Event callbacks
+
         this.callbacks = {
             onMicrophoneClick: null,
             onFileSelect: null,
             onPlayPause: null,
             onSeek: null,
-            onSettingsChange: null
+            onGeometryChange: null,
+            onRandomize: null
         };
-        
+
+        this.isUIVisible = true;
         this.init();
     }
 
-    /**
-     * Initialize UI event listeners
-     */
     init() {
         // Hide/Show UI
-        this.elements.btnHideUI.addEventListener('click', () => this.hideUI());
-        this.elements.btnShowUI.addEventListener('click', () => this.showUI());
-        
+        this.elements.btnHide.addEventListener('click', () => this.hideUI());
+        this.elements.btnShow.addEventListener('click', () => this.showUI());
+
         // Fullscreen
         this.elements.btnFullscreen.addEventListener('click', () => this.toggleFullscreen());
-        
-        // Audio source buttons
+
+        // Microphone
         this.elements.btnMicrophone.addEventListener('click', () => {
-            if (this.callbacks.onMicrophoneClick) {
-                this.callbacks.onMicrophoneClick();
-            }
+            this.callbacks.onMicrophoneClick?.();
         });
-        
-        this.elements.audioFileInput.addEventListener('change', (e) => {
+
+        // File input
+        this.elements.audioFile.addEventListener('change', (e) => {
             const file = e.target.files[0];
-            if (file && this.callbacks.onFileSelect) {
-                this.callbacks.onFileSelect(file);
-            }
+            if (file) this.callbacks.onFileSelect?.(file);
         });
-        
-        // Play/Pause button
+
+        // Play/Pause
         this.elements.btnPlay.addEventListener('click', () => {
-            if (this.callbacks.onPlayPause) {
-                this.callbacks.onPlayPause();
-            }
+            this.callbacks.onPlayPause?.();
         });
-        
-        // Progress bar seeking
+
+        // Progress seek
         this.elements.progressBar.addEventListener('click', (e) => {
             const rect = this.elements.progressBar.getBoundingClientRect();
-            const position = (e.clientX - rect.left) / rect.width;
-            if (this.callbacks.onSeek) {
-                this.callbacks.onSeek(Math.max(0, Math.min(1, position)));
-            }
+            const pos = (e.clientX - rect.left) / rect.width;
+            this.callbacks.onSeek?.(Math.max(0, Math.min(1, pos)));
         });
-        
-        // Central element settings
-        this.elements.selectCenterShape.addEventListener('change', (e) => {
-            this.emitSettingsChange({ centerShape: e.target.value });
+
+        // Geometry select
+        this.elements.selectGeometry.addEventListener('change', (e) => {
+            this.callbacks.onGeometryChange?.(e.target.value);
         });
-        
-        this.elements.rangeCenterSize.addEventListener('input', (e) => {
-            this.emitSettingsChange({ centerSize: parseFloat(e.target.value) });
+
+        // Randomize
+        this.elements.btnRandomize.addEventListener('click', () => {
+            this.callbacks.onRandomize?.();
         });
-        
-        this.elements.selectCenterColor.addEventListener('change', (e) => {
-            this.emitSettingsChange({ centerColor: e.target.value });
-        });
-        
-        // Surrounding elements settings
-        this.elements.selectSurroundType.addEventListener('change', (e) => {
-            this.emitSettingsChange({ surroundType: e.target.value });
-        });
-        
-        this.elements.rangeSurroundDensity.addEventListener('input', (e) => {
-            this.emitSettingsChange({ surroundDensity: parseFloat(e.target.value) });
-        });
-        
-        // Audio band settings
-        this.elements.selectBandStyle.addEventListener('change', (e) => {
-            this.emitSettingsChange({ bandStyle: e.target.value });
-        });
-        
-        this.elements.rangeBandIntensity.addEventListener('input', (e) => {
-            this.emitSettingsChange({ bandIntensity: parseFloat(e.target.value) });
-        });
-        
-        // General settings
-        this.elements.rangeSensitivity.addEventListener('input', (e) => {
-            this.emitSettingsChange({ sensitivity: parseFloat(e.target.value) });
-        });
-        
-        this.elements.rangeRotation.addEventListener('input', (e) => {
-            this.emitSettingsChange({ rotationSpeed: parseFloat(e.target.value) });
-        });
-        
-        // Keyboard shortcuts
+
+        // Keyboard
         document.addEventListener('keydown', (e) => this.handleKeyboard(e));
-        
-        // Fullscreen change event
-        document.addEventListener('fullscreenchange', () => this.updateFullscreenButton());
-        document.addEventListener('webkitfullscreenchange', () => this.updateFullscreenButton());
-        
+
+        // Fullscreen change
+        document.addEventListener('fullscreenchange', () => this.updateFullscreenBtn());
+        document.addEventListener('webkitfullscreenchange', () => this.updateFullscreenBtn());
+
         console.log('[UIController] Initialized');
     }
 
-    /**
-     * Emit settings change
-     */
-    emitSettingsChange(settings) {
-        if (this.callbacks.onSettingsChange) {
-            this.callbacks.onSettingsChange(settings);
-        }
-    }
-
-    /**
-     * Register event callbacks
-     */
     on(event, callback) {
         if (this.callbacks.hasOwnProperty(event)) {
             this.callbacks[event] = callback;
@@ -181,38 +95,22 @@ export class UIController {
         return this;
     }
 
-    /**
-     * Hide UI panel
-     */
     hideUI() {
-        this.elements.uiPanel.classList.add('hidden');
-        this.elements.btnShowUI.classList.remove('hidden');
+        this.elements.panel.classList.add('hidden');
+        this.elements.btnShow.classList.remove('hidden');
         this.isUIVisible = false;
     }
 
-    /**
-     * Show UI panel
-     */
     showUI() {
-        this.elements.uiPanel.classList.remove('hidden');
-        this.elements.btnShowUI.classList.add('hidden');
+        this.elements.panel.classList.remove('hidden');
+        this.elements.btnShow.classList.add('hidden');
         this.isUIVisible = true;
     }
 
-    /**
-     * Toggle UI visibility
-     */
     toggleUI() {
-        if (this.isUIVisible) {
-            this.hideUI();
-        } else {
-            this.showUI();
-        }
+        this.isUIVisible ? this.hideUI() : this.showUI();
     }
 
-    /**
-     * Toggle fullscreen mode
-     */
     async toggleFullscreen() {
         try {
             if (!document.fullscreenElement && !document.webkitFullscreenElement) {
@@ -228,30 +126,20 @@ export class UIController {
                     await document.webkitExitFullscreen();
                 }
             }
-        } catch (error) {
-            console.error('[UIController] Fullscreen error:', error);
+        } catch (err) {
+            console.error('[UIController] Fullscreen error:', err);
         }
     }
 
-    /**
-     * Update fullscreen button state
-     */
-    updateFullscreenButton() {
-        const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
-        const btnText = this.elements.btnFullscreen.querySelector('span');
-        if (btnText) {
-            btnText.textContent = isFullscreen ? 'Exit Fullscreen' : 'Fullscreen';
-        }
+    updateFullscreenBtn() {
+        const isFs = document.fullscreenElement || document.webkitFullscreenElement;
+        const span = this.elements.btnFullscreen.querySelector('span');
+        if (span) span.textContent = isFs ? 'Exit' : 'Fullscreen';
     }
 
-    /**
-     * Handle keyboard shortcuts
-     */
     handleKeyboard(e) {
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
-            return;
-        }
-        
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+
         switch (e.key.toLowerCase()) {
             case 'h':
                 this.toggleUI();
@@ -261,114 +149,61 @@ export class UIController {
                 break;
             case ' ':
                 e.preventDefault();
-                if (this.callbacks.onPlayPause) {
-                    this.callbacks.onPlayPause();
-                }
+                this.callbacks.onPlayPause?.();
+                break;
+            case 'r':
+                this.callbacks.onRandomize?.();
                 break;
         }
     }
 
-    /**
-     * Set microphone button active state
-     */
     setMicrophoneActive(active) {
-        if (active) {
-            this.elements.btnMicrophone.classList.add('active');
-        } else {
-            this.elements.btnMicrophone.classList.remove('active');
-        }
+        this.elements.btnMicrophone.classList.toggle('active', active);
     }
 
-    /**
-     * Show audio player
-     */
     showAudioPlayer(trackInfo) {
         this.elements.audioPlayer.classList.remove('hidden');
-        this.elements.trackName.textContent = trackInfo.name || 'Unknown Track';
-        this.elements.duration.textContent = this.formatTime(trackInfo.duration || 0);
-        this.elements.currentTime.textContent = '0:00';
+        this.elements.trackName.textContent = trackInfo.name || '—';
+        this.elements.timeTotal.textContent = this.formatTime(trackInfo.duration || 0);
+        this.elements.timeCurrent.textContent = '0:00';
         this.elements.progressFill.style.width = '0%';
     }
 
-    /**
-     * Hide audio player
-     */
     hideAudioPlayer() {
         this.elements.audioPlayer.classList.add('hidden');
     }
 
-    /**
-     * Update play button state
-     */
     setPlayingState(isPlaying) {
-        this.isPlaying = isPlaying;
-        const playIcon = this.elements.btnPlay.querySelector('.play-icon');
-        const pauseIcon = this.elements.btnPlay.querySelector('.pause-icon');
+        const playIcon = this.elements.btnPlay.querySelector('.icon-play');
+        const pauseIcon = this.elements.btnPlay.querySelector('.icon-pause');
         
-        if (isPlaying) {
-            playIcon.classList.add('hidden');
-            pauseIcon.classList.remove('hidden');
-        } else {
-            playIcon.classList.remove('hidden');
-            pauseIcon.classList.add('hidden');
-        }
+        playIcon.classList.toggle('hidden', isPlaying);
+        pauseIcon.classList.toggle('hidden', !isPlaying);
     }
 
-    /**
-     * Update playback progress
-     */
     updateProgress(currentTime, duration) {
         const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
         this.elements.progressFill.style.width = `${progress}%`;
-        this.elements.currentTime.textContent = this.formatTime(currentTime);
+        this.elements.timeCurrent.textContent = this.formatTime(currentTime);
     }
 
-    /**
-     * Update audio stats display
-     */
-    updateStats(audioData) {
-        const { amplitude, bass, mid, treble } = audioData;
-        
-        this.elements.statAmplitude.textContent = amplitude.toFixed(2);
-        this.elements.statBass.textContent = bass.toFixed(2);
-        this.elements.statMid.textContent = mid.toFixed(2);
-        this.elements.statTreble.textContent = treble.toFixed(2);
-        
-        this.elements.barAmplitude.style.width = `${amplitude * 100}%`;
-        this.elements.barBass.style.width = `${bass * 100}%`;
-        this.elements.barMid.style.width = `${mid * 100}%`;
-        this.elements.barTreble.style.width = `${treble * 100}%`;
+    setGeometrySelect(value) {
+        this.elements.selectGeometry.value = value;
     }
 
-    /**
-     * Format time in M:SS format
-     */
     formatTime(seconds) {
         if (!isFinite(seconds)) return '0:00';
-        const mins = Math.floor(seconds / 60);
-        const secs = Math.floor(seconds % 60);
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
+        const m = Math.floor(seconds / 60);
+        const s = Math.floor(seconds % 60);
+        return `${m}:${s.toString().padStart(2, '0')}`;
     }
 
-    /**
-     * Hide loading overlay
-     */
-    hideLoading() {
-        this.elements.loadingOverlay.classList.add('hidden');
+    hideLoader() {
+        this.elements.loader.classList.add('hidden');
     }
 
-    /**
-     * Show loading overlay
-     */
-    showLoading() {
-        this.elements.loadingOverlay.classList.remove('hidden');
-    }
-
-    /**
-     * Show error message
-     */
-    showError(message) {
-        console.error('[UIController] Error:', message);
-        alert(message);
+    showError(msg) {
+        console.error('[UIController]', msg);
+        alert(msg);
     }
 }
