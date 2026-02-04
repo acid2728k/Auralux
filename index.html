@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auralux — Audio Visualizer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <!-- Main UI Panel -->
+    <div id="ui-panel" class="ui-panel">
+        <!-- Header -->
+        <div class="panel-header">
+            <div class="logo">
+                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 6v12M8 9v6M16 9v6M4 12h2M18 12h2"/>
+                </svg>
+                <span class="logo-text">Auralux</span>
+            </div>
+            <button id="btn-hide-ui" class="icon-btn" title="Hide UI">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Audio Controls -->
+        <div class="panel-section">
+            <div class="section-title">Audio Source</div>
+            <div class="audio-controls">
+                <button id="btn-microphone" class="control-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                        <line x1="12" y1="19" x2="12" y2="23"/>
+                        <line x1="8" y1="23" x2="16" y2="23"/>
+                    </svg>
+                    <span>Microphone</span>
+                </button>
+                <label class="control-btn file-input-label">
+                    <input type="file" id="audio-file-input" accept="audio/*" hidden>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 18V5l12-2v13"/>
+                        <circle cx="6" cy="18" r="3"/>
+                        <circle cx="18" cy="16" r="3"/>
+                    </svg>
+                    <span>Load File</span>
+                </label>
+            </div>
+            <!-- Audio Player (hidden by default) -->
+            <div id="audio-player" class="audio-player hidden">
+                <div class="track-info">
+                    <span id="track-name">No track loaded</span>
+                </div>
+                <div class="player-controls">
+                    <button id="btn-play" class="player-btn">
+                        <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <polygon points="5,3 19,12 5,21"/>
+                        </svg>
+                        <svg class="pause-icon hidden" viewBox="0 0 24 24" fill="currentColor">
+                            <rect x="6" y="4" width="4" height="16"/>
+                            <rect x="14" y="4" width="4" height="16"/>
+                        </svg>
+                    </button>
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div id="progress-fill" class="progress-fill"></div>
+                        </div>
+                        <div class="time-display">
+                            <span id="current-time">0:00</span>
+                            <span id="duration">0:00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Visualization Settings -->
+        <div class="panel-section">
+            <div class="section-title">Visualization</div>
+            <div class="setting-row">
+                <label>Shape</label>
+                <select id="select-shape" class="select-input">
+                    <option value="sphere">Sphere Grid</option>
+                    <option value="torus">Torus Ring</option>
+                    <option value="cube">Cube Matrix</option>
+                    <option value="spiral">Spiral Helix</option>
+                    <option value="wave">Wave Field</option>
+                    <option value="particles">Particle Cloud</option>
+                </select>
+            </div>
+            <div class="setting-row">
+                <label>Sensitivity</label>
+                <input type="range" id="range-sensitivity" class="range-input" min="0.5" max="3" step="0.1" value="1.5">
+            </div>
+            <div class="setting-row">
+                <label>Rotation Speed</label>
+                <input type="range" id="range-rotation" class="range-input" min="0" max="2" step="0.1" value="0.5">
+            </div>
+            <div class="setting-row">
+                <label>Color Mode</label>
+                <select id="select-color" class="select-input">
+                    <option value="spectrum">Spectrum</option>
+                    <option value="purple">Purple Haze</option>
+                    <option value="cyan">Cyan Pulse</option>
+                    <option value="fire">Fire</option>
+                    <option value="monochrome">Monochrome</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="panel-section">
+            <div class="section-title">Audio Stats</div>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-label">Amplitude</div>
+                    <div id="stat-amplitude" class="stat-value">0.00</div>
+                    <div class="stat-bar"><div id="bar-amplitude" class="stat-bar-fill"></div></div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Bass</div>
+                    <div id="stat-bass" class="stat-value">0.00</div>
+                    <div class="stat-bar"><div id="bar-bass" class="stat-bar-fill bass"></div></div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Mid</div>
+                    <div id="stat-mid" class="stat-value">0.00</div>
+                    <div class="stat-bar"><div id="bar-mid" class="stat-bar-fill mid"></div></div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Treble</div>
+                    <div id="stat-treble" class="stat-value">0.00</div>
+                    <div class="stat-bar"><div id="bar-treble" class="stat-bar-fill treble"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="panel-footer">
+            <button id="btn-fullscreen" class="action-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="15,3 21,3 21,9"/>
+                    <polyline points="9,21 3,21 3,15"/>
+                    <line x1="21" y1="3" x2="14" y2="10"/>
+                    <line x1="3" y1="21" x2="10" y2="14"/>
+                </svg>
+                <span>Fullscreen</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Show UI Button (visible when UI is hidden) -->
+    <button id="btn-show-ui" class="show-ui-btn hidden">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+        </svg>
+    </button>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loader">
+            <div class="loader-ring"></div>
+            <span>Initializing...</span>
+        </div>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
