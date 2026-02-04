@@ -24,11 +24,22 @@ export class UIController {
             duration: document.getElementById('duration'),
             progressBar: document.querySelector('.progress-bar'),
             
-            // Visualization settings
-            selectShape: document.getElementById('select-shape'),
+            // Central element settings
+            selectCenterShape: document.getElementById('select-center-shape'),
+            rangeCenterSize: document.getElementById('range-center-size'),
+            selectCenterColor: document.getElementById('select-center-color'),
+            
+            // Surrounding elements settings
+            selectSurroundType: document.getElementById('select-surround-type'),
+            rangeSurroundDensity: document.getElementById('range-surround-density'),
+            
+            // Audio band settings
+            selectBandStyle: document.getElementById('select-band-style'),
+            rangeBandIntensity: document.getElementById('range-band-intensity'),
+            
+            // General settings
             rangeSensitivity: document.getElementById('range-sensitivity'),
             rangeRotation: document.getElementById('range-rotation'),
-            selectColor: document.getElementById('select-color'),
             
             // Stats
             statAmplitude: document.getElementById('stat-amplitude'),
@@ -54,10 +65,7 @@ export class UIController {
             onFileSelect: null,
             onPlayPause: null,
             onSeek: null,
-            onShapeChange: null,
-            onSensitivityChange: null,
-            onRotationChange: null,
-            onColorChange: null
+            onSettingsChange: null
         };
         
         this.init();
@@ -104,29 +112,44 @@ export class UIController {
             }
         });
         
-        // Visualization settings
-        this.elements.selectShape.addEventListener('change', (e) => {
-            if (this.callbacks.onShapeChange) {
-                this.callbacks.onShapeChange(e.target.value);
-            }
+        // Central element settings
+        this.elements.selectCenterShape.addEventListener('change', (e) => {
+            this.emitSettingsChange({ centerShape: e.target.value });
         });
         
+        this.elements.rangeCenterSize.addEventListener('input', (e) => {
+            this.emitSettingsChange({ centerSize: parseFloat(e.target.value) });
+        });
+        
+        this.elements.selectCenterColor.addEventListener('change', (e) => {
+            this.emitSettingsChange({ centerColor: e.target.value });
+        });
+        
+        // Surrounding elements settings
+        this.elements.selectSurroundType.addEventListener('change', (e) => {
+            this.emitSettingsChange({ surroundType: e.target.value });
+        });
+        
+        this.elements.rangeSurroundDensity.addEventListener('input', (e) => {
+            this.emitSettingsChange({ surroundDensity: parseFloat(e.target.value) });
+        });
+        
+        // Audio band settings
+        this.elements.selectBandStyle.addEventListener('change', (e) => {
+            this.emitSettingsChange({ bandStyle: e.target.value });
+        });
+        
+        this.elements.rangeBandIntensity.addEventListener('input', (e) => {
+            this.emitSettingsChange({ bandIntensity: parseFloat(e.target.value) });
+        });
+        
+        // General settings
         this.elements.rangeSensitivity.addEventListener('input', (e) => {
-            if (this.callbacks.onSensitivityChange) {
-                this.callbacks.onSensitivityChange(parseFloat(e.target.value));
-            }
+            this.emitSettingsChange({ sensitivity: parseFloat(e.target.value) });
         });
         
         this.elements.rangeRotation.addEventListener('input', (e) => {
-            if (this.callbacks.onRotationChange) {
-                this.callbacks.onRotationChange(parseFloat(e.target.value));
-            }
-        });
-        
-        this.elements.selectColor.addEventListener('change', (e) => {
-            if (this.callbacks.onColorChange) {
-                this.callbacks.onColorChange(e.target.value);
-            }
+            this.emitSettingsChange({ rotationSpeed: parseFloat(e.target.value) });
         });
         
         // Keyboard shortcuts
@@ -137,6 +160,15 @@ export class UIController {
         document.addEventListener('webkitfullscreenchange', () => this.updateFullscreenButton());
         
         console.log('[UIController] Initialized');
+    }
+
+    /**
+     * Emit settings change
+     */
+    emitSettingsChange(settings) {
+        if (this.callbacks.onSettingsChange) {
+            this.callbacks.onSettingsChange(settings);
+        }
     }
 
     /**
@@ -184,14 +216,12 @@ export class UIController {
     async toggleFullscreen() {
         try {
             if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-                // Enter fullscreen
                 if (document.documentElement.requestFullscreen) {
                     await document.documentElement.requestFullscreen();
                 } else if (document.documentElement.webkitRequestFullscreen) {
                     await document.documentElement.webkitRequestFullscreen();
                 }
             } else {
-                // Exit fullscreen
                 if (document.exitFullscreen) {
                     await document.exitFullscreen();
                 } else if (document.webkitExitFullscreen) {
@@ -218,7 +248,6 @@ export class UIController {
      * Handle keyboard shortcuts
      */
     handleKeyboard(e) {
-        // Don't handle if user is typing in an input
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
             return;
         }
@@ -300,13 +329,11 @@ export class UIController {
     updateStats(audioData) {
         const { amplitude, bass, mid, treble } = audioData;
         
-        // Update values
         this.elements.statAmplitude.textContent = amplitude.toFixed(2);
         this.elements.statBass.textContent = bass.toFixed(2);
         this.elements.statMid.textContent = mid.toFixed(2);
         this.elements.statTreble.textContent = treble.toFixed(2);
         
-        // Update bars
         this.elements.barAmplitude.style.width = `${amplitude * 100}%`;
         this.elements.barBass.style.width = `${bass * 100}%`;
         this.elements.barMid.style.width = `${mid * 100}%`;
@@ -341,7 +368,6 @@ export class UIController {
      * Show error message
      */
     showError(message) {
-        // Simple alert for now, could be replaced with custom modal
         console.error('[UIController] Error:', message);
         alert(message);
     }

@@ -75,7 +75,6 @@ class Auralux {
                 this.uiController.setMicrophoneActive(false);
                 this.uiController.showAudioPlayer(trackInfo);
                 
-                // Setup audio element event listeners
                 const audioElement = this.audioAnalyzer.getAudioElement();
                 if (audioElement) {
                     audioElement.addEventListener('play', () => {
@@ -116,26 +115,10 @@ class Auralux {
             this.audioAnalyzer.seek(position);
         });
         
-        // Shape change
-        this.uiController.on('onShapeChange', (shape) => {
-            this.visualizer.setShape(shape);
-            console.log('[Auralux] Shape changed to:', shape);
-        });
-        
-        // Sensitivity change
-        this.uiController.on('onSensitivityChange', (value) => {
-            this.visualizer.updateSettings({ sensitivity: value });
-        });
-        
-        // Rotation speed change
-        this.uiController.on('onRotationChange', (value) => {
-            this.visualizer.updateSettings({ rotationSpeed: value });
-        });
-        
-        // Color mode change
-        this.uiController.on('onColorChange', (mode) => {
-            this.visualizer.updateSettings({ colorMode: mode });
-            console.log('[Auralux] Color mode changed to:', mode);
+        // Settings change
+        this.uiController.on('onSettingsChange', (settings) => {
+            this.visualizer.updateSettings(settings);
+            console.log('[Auralux] Settings updated:', settings);
         });
     }
 
@@ -166,20 +149,12 @@ class Auralux {
         
         this.animationId = requestAnimationFrame(() => this.animate());
         
-        // Get audio data
         if (this.audioAnalyzer.sourceType) {
             const audioData = this.audioAnalyzer.analyze();
-            
-            // Update visualizer
             this.visualizer.update(audioData);
-            
-            // Update UI stats
             this.uiController.updateStats(audioData);
         } else {
-            // Render idle animation when no audio source
             this.visualizer.renderIdle();
-            
-            // Reset stats
             this.uiController.updateStats({
                 amplitude: 0,
                 bass: 0,

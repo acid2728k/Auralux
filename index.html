@@ -6,7 +6,7 @@
     <title>Auralux — Audio Visualizer</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -16,13 +16,7 @@
     <div id="ui-panel" class="ui-panel">
         <!-- Header -->
         <div class="panel-header">
-            <div class="logo">
-                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"/>
-                    <path d="M12 6v12M8 9v6M16 9v6M4 12h2M18 12h2"/>
-                </svg>
-                <span class="logo-text">Auralux</span>
-            </div>
+            <span class="panel-title">Settings</span>
             <button id="btn-hide-ui" class="icon-btn" title="Hide UI">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
@@ -82,37 +76,86 @@
             </div>
         </div>
 
-        <!-- Visualization Settings -->
+        <!-- Central Element Settings -->
         <div class="panel-section">
-            <div class="section-title">Visualization</div>
+            <div class="section-title">Central Element</div>
             <div class="setting-row">
                 <label>Shape</label>
-                <select id="select-shape" class="select-input">
-                    <option value="sphere">Sphere Grid</option>
-                    <option value="torus">Torus Ring</option>
-                    <option value="cube">Cube Matrix</option>
-                    <option value="spiral">Spiral Helix</option>
-                    <option value="wave">Wave Field</option>
-                    <option value="particles">Particle Cloud</option>
+                <select id="select-center-shape" class="select-input">
+                    <option value="ring">Ring</option>
+                    <option value="sphere">Sphere</option>
+                    <option value="torus">Torus</option>
+                    <option value="octahedron">Octahedron</option>
+                    <option value="icosahedron">Icosahedron</option>
+                    <option value="dodecahedron">Dodecahedron</option>
                 </select>
             </div>
+            <div class="setting-row">
+                <label>Size</label>
+                <input type="range" id="range-center-size" class="range-input" min="0.5" max="2" step="0.1" value="1">
+            </div>
+            <div class="setting-row">
+                <label>Color</label>
+                <select id="select-center-color" class="select-input">
+                    <option value="gradient">Gradient</option>
+                    <option value="purple">Purple</option>
+                    <option value="cyan">Cyan</option>
+                    <option value="orange">Orange</option>
+                    <option value="white">White</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Surrounding Elements Settings -->
+        <div class="panel-section">
+            <div class="section-title">Surrounding Elements</div>
+            <div class="setting-row">
+                <label>Type</label>
+                <select id="select-surround-type" class="select-input">
+                    <option value="rays">Rays</option>
+                    <option value="particles">Particles</option>
+                    <option value="rings">Rings</option>
+                    <option value="dots">Dots</option>
+                    <option value="waves">Waves</option>
+                    <option value="none">None</option>
+                </select>
+            </div>
+            <div class="setting-row">
+                <label>Density</label>
+                <input type="range" id="range-surround-density" class="range-input" min="0.5" max="2" step="0.1" value="1">
+            </div>
+        </div>
+
+        <!-- Middle Band Settings -->
+        <div class="panel-section">
+            <div class="section-title">Audio Band</div>
+            <div class="setting-row">
+                <label>Style</label>
+                <select id="select-band-style" class="select-input">
+                    <option value="waveform">Waveform</option>
+                    <option value="bars">Bars</option>
+                    <option value="line">Line</option>
+                    <option value="mirror">Mirror</option>
+                    <option value="circular">Circular</option>
+                    <option value="none">None</option>
+                </select>
+            </div>
+            <div class="setting-row">
+                <label>Intensity</label>
+                <input type="range" id="range-band-intensity" class="range-input" min="0.5" max="3" step="0.1" value="1.5">
+            </div>
+        </div>
+
+        <!-- General Settings -->
+        <div class="panel-section">
+            <div class="section-title">General</div>
             <div class="setting-row">
                 <label>Sensitivity</label>
                 <input type="range" id="range-sensitivity" class="range-input" min="0.5" max="3" step="0.1" value="1.5">
             </div>
             <div class="setting-row">
-                <label>Rotation Speed</label>
-                <input type="range" id="range-rotation" class="range-input" min="0" max="2" step="0.1" value="0.5">
-            </div>
-            <div class="setting-row">
-                <label>Color Mode</label>
-                <select id="select-color" class="select-input">
-                    <option value="spectrum">Spectrum</option>
-                    <option value="purple">Purple Haze</option>
-                    <option value="cyan">Cyan Pulse</option>
-                    <option value="fire">Fire</option>
-                    <option value="monochrome">Monochrome</option>
-                </select>
+                <label>Rotation</label>
+                <input type="range" id="range-rotation" class="range-input" min="0" max="2" step="0.1" value="0.3">
             </div>
         </div>
 
@@ -128,17 +171,17 @@
                 <div class="stat-item">
                     <div class="stat-label">Bass</div>
                     <div id="stat-bass" class="stat-value">0.00</div>
-                    <div class="stat-bar"><div id="bar-bass" class="stat-bar-fill bass"></div></div>
+                    <div class="stat-bar"><div id="bar-bass" class="stat-bar-fill"></div></div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-label">Mid</div>
                     <div id="stat-mid" class="stat-value">0.00</div>
-                    <div class="stat-bar"><div id="bar-mid" class="stat-bar-fill mid"></div></div>
+                    <div class="stat-bar"><div id="bar-mid" class="stat-bar-fill"></div></div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-label">Treble</div>
                     <div id="stat-treble" class="stat-value">0.00</div>
-                    <div class="stat-bar"><div id="bar-treble" class="stat-bar-fill treble"></div></div>
+                    <div class="stat-bar"><div id="bar-treble" class="stat-bar-fill"></div></div>
                 </div>
             </div>
         </div>
