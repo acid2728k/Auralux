@@ -64,10 +64,9 @@
             </div>
         </div>
 
-        <!-- Divider -->
         <div class="ui-divider"></div>
 
-        <!-- Center Geometry -->
+        <!-- Center Shape -->
         <div class="ui-section column">
             <span class="ui-label">Center Shape</span>
             <select id="select-geometry" class="ui-select">
@@ -80,13 +79,10 @@
                 </optgroup>
                 <optgroup label="Complex Polyhedra">
                     <option value="stellatedOcta">Stellated Octahedron</option>
-                    <option value="stellatedDodeca">Stellated Dodecahedron</option>
                     <option value="truncatedIcosa">Truncated Icosahedron</option>
-                    <option value="rhombicubocta">Rhombicuboctahedron</option>
                     <option value="snubCube">Snub Cube</option>
                 </optgroup>
                 <optgroup label="Paradox Shapes">
-                    <option value="penrose">Penrose Triangle</option>
                     <option value="kleinBottle">Klein Bottle</option>
                     <option value="mobiusStrip">Möbius Strip</option>
                     <option value="hyperCube">Hypercube (4D)</option>
@@ -94,13 +90,12 @@
                 </optgroup>
                 <optgroup label="Fractal-like">
                     <option value="sierpinski">Sierpinski Tetrahedron</option>
-                    <option value="mengerSponge">Menger Sponge</option>
                     <option value="geodesic">Geodesic Sphere</option>
                 </optgroup>
             </select>
         </div>
 
-        <!-- Center Detail -->
+        <!-- Detail -->
         <div class="ui-section column">
             <div class="ui-row">
                 <span class="ui-label">Detail</span>
@@ -109,21 +104,41 @@
             <input type="range" id="range-detail" class="ui-range" min="1" max="6" step="1" value="3">
         </div>
 
-        <!-- Divider -->
         <div class="ui-divider"></div>
 
-        <!-- Surround Type -->
+        <!-- Rings -->
         <div class="ui-section column">
-            <span class="ui-label">Surround Shape</span>
+            <span class="ui-label">Rings Style</span>
+            <select id="select-rings" class="ui-select">
+                <option value="orbital">Orbital Rings</option>
+                <option value="saturn">Saturn Rings</option>
+                <option value="gyroscope">Gyroscope</option>
+                <option value="atomic">Atomic Orbits</option>
+                <option value="spiral">Spiral Rings</option>
+                <option value="cage">Wireframe Cage</option>
+                <option value="none">None</option>
+            </select>
+        </div>
+
+        <!-- Rings Count -->
+        <div class="ui-section column">
+            <div class="ui-row">
+                <span class="ui-label">Rings Count</span>
+                <span id="rings-count-value" class="ui-value">4</span>
+            </div>
+            <input type="range" id="range-rings-count" class="ui-range" min="1" max="8" step="1" value="4">
+        </div>
+
+        <div class="ui-divider"></div>
+
+        <!-- Surround -->
+        <div class="ui-section column">
+            <span class="ui-label">Surround Elements</span>
             <select id="select-surround" class="ui-select">
-                <option value="orbitalRings">Orbital Rings</option>
                 <option value="floatingPolyhedra">Floating Polyhedra</option>
-                <option value="wireframeCage">Wireframe Cage</option>
-                <option value="spiralArms">Spiral Arms</option>
-                <option value="particleCloud">Particle Cloud</option>
-                <option value="concentricSpheres">Concentric Spheres</option>
-                <option value="dnaHelix">DNA Helix</option>
-                <option value="atomicOrbits">Atomic Orbits</option>
+                <option value="particles">Particle Field</option>
+                <option value="asteroids">Asteroids</option>
+                <option value="crystals">Crystals</option>
                 <option value="none">None</option>
             </select>
         </div>
@@ -132,21 +147,35 @@
         <div class="ui-section column">
             <div class="ui-row">
                 <span class="ui-label">Count</span>
-                <span id="surround-count-value" class="ui-value">24</span>
+                <span id="surround-count-value" class="ui-value">20</span>
             </div>
-            <input type="range" id="range-surround-count" class="ui-range" min="6" max="64" step="2" value="24">
+            <input type="range" id="range-surround-count" class="ui-range" min="5" max="50" step="5" value="20">
         </div>
 
-        <!-- Surround Complexity -->
+        <div class="ui-divider"></div>
+
+        <!-- Background -->
+        <div class="ui-section column">
+            <span class="ui-label">Background Objects</span>
+            <select id="select-background" class="ui-select">
+                <option value="flyingDebris">Flying Debris</option>
+                <option value="starfield">Starfield</option>
+                <option value="meteors">Meteors</option>
+                <option value="nebula">Nebula Particles</option>
+                <option value="grid">Grid Plane</option>
+                <option value="none">None</option>
+            </select>
+        </div>
+
+        <!-- Background Density -->
         <div class="ui-section column">
             <div class="ui-row">
-                <span class="ui-label">Complexity</span>
-                <span id="surround-complexity-value" class="ui-value">2</span>
+                <span class="ui-label">Density</span>
+                <span id="bg-density-value" class="ui-value">50</span>
             </div>
-            <input type="range" id="range-surround-complexity" class="ui-range" min="0" max="4" step="1" value="2">
+            <input type="range" id="range-bg-density" class="ui-range" min="10" max="150" step="10" value="50">
         </div>
 
-        <!-- Divider -->
         <div class="ui-divider"></div>
 
         <!-- Actions -->

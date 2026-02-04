@@ -1,6 +1,6 @@
 /**
  * Visualizer Module
- * Deep 3D scene with complex geometries, wireframes, and particles
+ * Deep 3D scene with customizable elements
  */
 
 import * as THREE from 'three';
@@ -17,18 +17,23 @@ export class Visualizer {
         this.composer = null;
         this.clock = new THREE.Clock();
         
-        // Scene objects
+        // Groups
         this.centerGroup = null;
+        this.ringsGroup = null;
         this.surroundGroup = null;
-        this.particles = null;
+        this.backgroundGroup = null;
+        this.particlesGroup = null;
         
         // Settings
         this.settings = {
             geometry: 'icosahedron',
             detail: 3,
-            surroundType: 'orbitalRings',
-            surroundCount: 24,
-            surroundComplexity: 2
+            ringsStyle: 'orbital',
+            ringsCount: 4,
+            surroundType: 'floatingPolyhedra',
+            surroundCount: 20,
+            backgroundType: 'flyingDebris',
+            backgroundDensity: 50
         };
         
         this.baseScale = 4;
@@ -37,6 +42,7 @@ export class Visualizer {
         this.colors = {
             primary: new THREE.Color(0xa855f7),
             secondary: new THREE.Color(0xff6a00),
+            tertiary: new THREE.Color(0x06b6d4),
             white: new THREE.Color(0xffffff)
         };
         
@@ -44,26 +50,31 @@ export class Visualizer {
         this.time = 0;
         this.smoothedAudio = { amplitude: 0, bass: 0, mid: 0, treble: 0 };
         
+        // Flying objects data
+        this.flyingObjects = [];
+        
         this.init();
     }
 
     init() {
-        // Scene
+        // Scene with deep fog
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x000000);
-        this.scene.fog = new THREE.FogExp2(0x000000, 0.015);
+        this.scene.fog = new THREE.FogExp2(0x000005, 0.008);
 
         // Camera
         const aspect = window.innerWidth / window.innerHeight;
-        this.camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 1000);
-        this.camera.position.z = 25;
+        this.camera = new THREE.PerspectiveCamera(70, aspect, 0.1, 2000);
+        this.camera.position.z = 30;
 
         // Renderer
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.2;
+        this.renderer.toneMappingExposure = 1.5;
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.container.appendChild(this.renderer.domElement);
 
         // Post-processing
@@ -74,16 +85,24 @@ export class Visualizer {
 
         // Groups
         this.centerGroup = new THREE.Group();
+        this.ringsGroup = new THREE.Group();
         this.surroundGroup = new THREE.Group();
+        this.backgroundGroup = new THREE.Group();
+        this.particlesGroup = new THREE.Group();
+        
         this.scene.add(this.centerGroup);
+        this.scene.add(this.ringsGroup);
         this.scene.add(this.surroundGroup);
+        this.scene.add(this.backgroundGroup);
+        this.scene.add(this.particlesGroup);
 
-        // Create scene
+        // Create all elements
         this.createCenterGeometry();
+        this.createRings();
         this.createSurroundElements();
-        this.createBackgroundParticles();
+        this.createBackgroundElements();
+        this.createDeepParticles();
 
-        // Events
         window.addEventListener('resize', () => this.onResize());
 
         console.log('[Visualizer] Initialized');
@@ -95,151 +114,78 @@ export class Visualizer {
         
         this.bloomPass = new UnrealBloomPass(
             new THREE.Vector2(window.innerWidth, window.innerHeight),
-            0.7, 0.4, 0.2
+            1.0, 0.5, 0.1
         );
         this.composer.addPass(this.bloomPass);
     }
 
     setupLights() {
-        const ambient = new THREE.AmbientLight(0xffffff, 0.15);
+        // Ambient
+        const ambient = new THREE.AmbientLight(0x111122, 0.5);
         this.scene.add(ambient);
 
-        this.mainLight = new THREE.PointLight(0xa855f7, 2, 60);
-        this.mainLight.position.set(0, 0, 20);
+        // Main light (purple)
+        this.mainLight = new THREE.PointLight(0xa855f7, 3, 80);
+        this.mainLight.position.set(0, 0, 25);
+        this.mainLight.castShadow = true;
         this.scene.add(this.mainLight);
 
-        this.accentLight = new THREE.PointLight(0xff6a00, 0.8, 40);
-        this.accentLight.position.set(-15, 10, 10);
+        // Accent light (orange)
+        this.accentLight = new THREE.PointLight(0xff6a00, 2, 60);
+        this.accentLight.position.set(-20, 15, 10);
         this.scene.add(this.accentLight);
 
-        this.backLight = new THREE.PointLight(0x06b6d4, 0.5, 40);
-        this.backLight.position.set(10, -10, -15);
+        // Back light (cyan)
+        this.backLight = new THREE.PointLight(0x06b6d4, 1.5, 60);
+        this.backLight.position.set(15, -10, -20);
         this.scene.add(this.backLight);
+
+        // Rim light
+        this.rimLight = new THREE.PointLight(0xffffff, 0.5, 50);
+        this.rimLight.position.set(0, 20, -15);
+        this.scene.add(this.rimLight);
+
+        // Directional for shadows
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.3);
+        dirLight.position.set(10, 20, 10);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 1024;
+        dirLight.shadow.mapSize.height = 1024;
+        this.scene.add(dirLight);
     }
 
     // =====================================================
-    // GEOMETRY GENERATORS
+    // GEOMETRY CREATION
     // =====================================================
 
     createGeometry(type, detail) {
-        const d = detail;
         const s = this.baseScale;
-
         switch (type) {
-            // Platonic Solids
-            case 'tetrahedron':
-                return new THREE.TetrahedronGeometry(s * 1.2, d);
-            case 'hexahedron':
-                return new THREE.BoxGeometry(s * 1.4, s * 1.4, s * 1.4, d * 2, d * 2, d * 2);
-            case 'octahedron':
-                return new THREE.OctahedronGeometry(s, d);
-            case 'dodecahedron':
-                return new THREE.DodecahedronGeometry(s, d);
-            case 'icosahedron':
-                return new THREE.IcosahedronGeometry(s, d);
-
-            // Complex Polyhedra
-            case 'stellatedOcta':
-                return this.createStellatedOctahedron(s, d);
-            case 'stellatedDodeca':
-                return this.createStellatedDodecahedron(s, d);
-            case 'truncatedIcosa':
-                return new THREE.IcosahedronGeometry(s, d + 1);
-            case 'rhombicubocta':
-                return this.createRhombicuboctahedron(s, d);
-            case 'snubCube':
-                return this.createSnubCube(s, d);
-
-            // Paradox Shapes
-            case 'penrose':
-                return this.createPenroseTriangle(s);
-            case 'kleinBottle':
-                return this.createKleinBottle(s, d);
-            case 'mobiusStrip':
-                return this.createMobiusStrip(s, d);
-            case 'hyperCube':
-                return this.createHypercube(s);
-            case 'torusKnot':
-                return new THREE.TorusKnotGeometry(s * 0.7, s * 0.2, 128 + d * 32, 16 + d * 4, 2, 3);
-
-            // Fractal-like
-            case 'sierpinski':
-                return this.createSierpinskiTetrahedron(s, Math.min(d, 4));
-            case 'mengerSponge':
-                return this.createMengerSponge(s, Math.min(d, 3));
-            case 'geodesic':
-                return new THREE.IcosahedronGeometry(s, d + 2);
-
-            default:
-                return new THREE.IcosahedronGeometry(s, d);
+            case 'tetrahedron': return new THREE.TetrahedronGeometry(s * 1.2, detail);
+            case 'hexahedron': return new THREE.BoxGeometry(s * 1.4, s * 1.4, s * 1.4, detail * 2, detail * 2, detail * 2);
+            case 'octahedron': return new THREE.OctahedronGeometry(s, detail);
+            case 'dodecahedron': return new THREE.DodecahedronGeometry(s, detail);
+            case 'icosahedron': return new THREE.IcosahedronGeometry(s, detail);
+            case 'stellatedOcta': return new THREE.OctahedronGeometry(s * 1.2, detail + 1);
+            case 'truncatedIcosa': return new THREE.IcosahedronGeometry(s, detail + 2);
+            case 'snubCube': return this.createTwistedGeometry(s, detail);
+            case 'kleinBottle': return this.createKleinBottle(s, detail);
+            case 'mobiusStrip': return this.createMobiusStrip(s, detail);
+            case 'hyperCube': return new THREE.BoxGeometry(s * 1.3, s * 1.3, s * 1.3, detail + 2, detail + 2, detail + 2);
+            case 'torusKnot': return new THREE.TorusKnotGeometry(s * 0.7, s * 0.25, 100 + detail * 30, 16, 2, 3);
+            case 'sierpinski': return this.createSierpinskiTetrahedron(s, Math.min(detail, 4));
+            case 'geodesic': return new THREE.IcosahedronGeometry(s, detail + 3);
+            default: return new THREE.IcosahedronGeometry(s, detail);
         }
     }
 
-    createStellatedOctahedron(size, detail) {
-        const geometry = new THREE.BufferGeometry();
-        const s = size;
-        
-        // Octahedron vertices
-        const vertices = [
-            0, s, 0,    0, -s, 0,
-            s, 0, 0,    -s, 0, 0,
-            0, 0, s,    0, 0, -s
-        ];
-        
-        // Stellated points (extended)
-        const ext = s * 1.5;
-        const stellated = [
-            ext, ext, ext,    ext, ext, -ext,
-            ext, -ext, ext,   ext, -ext, -ext,
-            -ext, ext, ext,   -ext, ext, -ext,
-            -ext, -ext, ext,  -ext, -ext, -ext
-        ];
-        
-        const allVerts = [...vertices, ...stellated];
-        
-        // Create triangulated mesh
-        const indices = [];
-        // Original octahedron faces
-        const octaFaces = [
-            0, 2, 4,  0, 4, 3,  0, 3, 5,  0, 5, 2,
-            1, 4, 2,  1, 3, 4,  1, 5, 3,  1, 2, 5
-        ];
-        indices.push(...octaFaces);
-        
-        // Add stellations
-        for (let i = 6; i < 14; i++) {
-            indices.push(0, 2, i);
-            indices.push(1, 4, i);
-        }
-        
-        geometry.setAttribute('position', new THREE.Float32BufferAttribute(allVerts, 3));
-        geometry.setIndex(indices);
-        geometry.computeVertexNormals();
-        
-        // Fallback to detailed octahedron
-        return new THREE.OctahedronGeometry(size * 1.2, detail + 1);
-    }
-
-    createStellatedDodecahedron(size, detail) {
-        // Use dodecahedron with extended detail as approximation
-        return new THREE.DodecahedronGeometry(size * 1.1, detail + 1);
-    }
-
-    createRhombicuboctahedron(size, detail) {
-        // Approximate with high-detail icosahedron
-        return new THREE.IcosahedronGeometry(size, detail + 2);
-    }
-
-    createSnubCube(size, detail) {
-        // Approximate with detailed geometry
+    createTwistedGeometry(size, detail) {
         const geometry = new THREE.IcosahedronGeometry(size, detail + 1);
-        // Apply slight twist
         const positions = geometry.attributes.position.array;
         for (let i = 0; i < positions.length; i += 3) {
             const y = positions[i + 1];
-            const angle = y * 0.3;
-            const x = positions[i];
-            const z = positions[i + 2];
+            const angle = y * 0.4;
+            const x = positions[i], z = positions[i + 2];
             positions[i] = x * Math.cos(angle) - z * Math.sin(angle);
             positions[i + 2] = x * Math.sin(angle) + z * Math.cos(angle);
         }
@@ -248,37 +194,10 @@ export class Visualizer {
         return geometry;
     }
 
-    createPenroseTriangle(size) {
-        // Create impossible triangle illusion shape
-        const shape = new THREE.Shape();
-        const s = size * 0.4;
-        
-        // Outer triangle
-        shape.moveTo(0, s * 2);
-        shape.lineTo(s * 1.73, -s);
-        shape.lineTo(-s * 1.73, -s);
-        shape.closePath();
-        
-        // Inner cutout
-        const hole = new THREE.Path();
-        hole.moveTo(0, s * 0.8);
-        hole.lineTo(s * 0.7, -s * 0.4);
-        hole.lineTo(-s * 0.7, -s * 0.4);
-        hole.closePath();
-        shape.holes.push(hole);
-        
-        const extrudeSettings = { depth: s * 0.5, bevelEnabled: true, bevelThickness: 0.1, bevelSize: 0.1 };
-        const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-        geometry.center();
-        return geometry;
-    }
-
     createKleinBottle(size, detail) {
-        const geometry = new THREE.ParametricGeometry((u, v, target) => {
-            u *= Math.PI * 2;
-            v *= Math.PI * 2;
-            const s = size * 0.3;
-            
+        return new THREE.ParametricGeometry((u, v, target) => {
+            u *= Math.PI * 2; v *= Math.PI * 2;
+            const s = size * 0.25;
             let x, y, z;
             if (u < Math.PI) {
                 x = 3 * Math.cos(u) * (1 + Math.sin(u)) + 2 * (1 - Math.cos(u) / 2) * Math.cos(u) * Math.cos(v);
@@ -288,661 +207,575 @@ export class Visualizer {
                 z = -8 * Math.sin(u);
             }
             y = -2 * (1 - Math.cos(u) / 2) * Math.sin(v);
-            
             target.set(x * s * 0.3, y * s * 0.3, z * s * 0.3);
-        }, 64 + detail * 16, 16 + detail * 4);
-        
-        return geometry;
+        }, 50 + detail * 15, 15 + detail * 3);
     }
 
     createMobiusStrip(size, detail) {
-        const geometry = new THREE.ParametricGeometry((u, v, target) => {
-            u = u * Math.PI * 2;
-            v = (v - 0.5) * 2;
+        return new THREE.ParametricGeometry((u, v, target) => {
+            u = u * Math.PI * 2; v = (v - 0.5) * 2;
             const s = size * 0.8;
-            
-            const x = (1 + v / 2 * Math.cos(u / 2)) * Math.cos(u) * s;
-            const y = (1 + v / 2 * Math.cos(u / 2)) * Math.sin(u) * s;
-            const z = v / 2 * Math.sin(u / 2) * s;
-            
-            target.set(x, y, z);
-        }, 64 + detail * 16, 8 + detail * 2);
-        
-        return geometry;
-    }
-
-    createHypercube(size) {
-        // 4D hypercube (tesseract) projected to 3D
-        const geometry = new THREE.BufferGeometry();
-        const s = size * 0.6;
-        
-        // 4D vertices projected to 3D
-        const vertices = [];
-        const w = 0.7; // 4th dimension projection factor
-        
-        for (let i = 0; i < 16; i++) {
-            const x = (i & 1 ? 1 : -1) * s;
-            const y = (i & 2 ? 1 : -1) * s;
-            const z = (i & 4 ? 1 : -1) * s;
-            const w4 = (i & 8 ? 1 : -1);
-            
-            // Project from 4D to 3D
-            const scale = 1 / (2 - w4 * w);
-            vertices.push(x * scale, y * scale, z * scale);
-        }
-        
-        // Edges connecting vertices
-        const indices = [];
-        for (let i = 0; i < 16; i++) {
-            for (let j = i + 1; j < 16; j++) {
-                const diff = i ^ j;
-                // Connect if only one bit differs (adjacent in hypercube)
-                if (diff && (diff & (diff - 1)) === 0) {
-                    indices.push(i, j);
-                }
-            }
-        }
-        
-        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-        geometry.setIndex(indices);
-        
-        // Return as box geometry for solid mesh
-        return new THREE.BoxGeometry(s * 1.5, s * 1.5, s * 1.5, 4, 4, 4);
+            target.set(
+                (1 + v / 2 * Math.cos(u / 2)) * Math.cos(u) * s,
+                (1 + v / 2 * Math.cos(u / 2)) * Math.sin(u) * s,
+                v / 2 * Math.sin(u / 2) * s
+            );
+        }, 50 + detail * 15, 8 + detail * 2);
     }
 
     createSierpinskiTetrahedron(size, depth) {
         const geometry = new THREE.BufferGeometry();
-        const vertices = [];
-        const indices = [];
+        const vertices = [], indices = [];
         
-        const addTetrahedron = (v0, v1, v2, v3, d) => {
+        const addTetra = (v0, v1, v2, v3, d) => {
             if (d === 0) {
                 const idx = vertices.length / 3;
                 vertices.push(...v0, ...v1, ...v2, ...v3);
-                // 4 faces
-                indices.push(idx, idx + 1, idx + 2);
-                indices.push(idx, idx + 2, idx + 3);
-                indices.push(idx, idx + 3, idx + 1);
-                indices.push(idx + 1, idx + 3, idx + 2);
+                indices.push(idx, idx + 1, idx + 2, idx, idx + 2, idx + 3, idx, idx + 3, idx + 1, idx + 1, idx + 3, idx + 2);
                 return;
             }
-            
-            // Midpoints
             const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
             const m01 = mid(v0, v1), m02 = mid(v0, v2), m03 = mid(v0, v3);
             const m12 = mid(v1, v2), m13 = mid(v1, v3), m23 = mid(v2, v3);
-            
-            // 4 smaller tetrahedra
-            addTetrahedron(v0, m01, m02, m03, d - 1);
-            addTetrahedron(m01, v1, m12, m13, d - 1);
-            addTetrahedron(m02, m12, v2, m23, d - 1);
-            addTetrahedron(m03, m13, m23, v3, d - 1);
+            addTetra(v0, m01, m02, m03, d - 1);
+            addTetra(m01, v1, m12, m13, d - 1);
+            addTetra(m02, m12, v2, m23, d - 1);
+            addTetra(m03, m13, m23, v3, d - 1);
         };
         
-        const s = size;
-        const h = s * Math.sqrt(2 / 3);
-        const v0 = [0, h, 0];
-        const v1 = [-s, -h / 3, s * 0.577];
-        const v2 = [s, -h / 3, s * 0.577];
-        const v3 = [0, -h / 3, -s * 1.155];
-        
-        addTetrahedron(v0, v1, v2, v3, depth);
+        const s = size, h = s * Math.sqrt(2 / 3);
+        addTetra([0, h, 0], [-s, -h / 3, s * 0.577], [s, -h / 3, s * 0.577], [0, -h / 3, -s * 1.155], depth);
         
         geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
         geometry.setIndex(indices);
         geometry.computeVertexNormals();
-        
-        return geometry;
-    }
-
-    createMengerSponge(size, depth) {
-        const geometry = new THREE.BufferGeometry();
-        const vertices = [];
-        const indices = [];
-        
-        const addCube = (x, y, z, s, d) => {
-            if (d === 0) {
-                const idx = vertices.length / 3;
-                const hs = s / 2;
-                
-                // 8 vertices
-                for (let i = 0; i < 8; i++) {
-                    vertices.push(
-                        x + (i & 1 ? hs : -hs),
-                        y + (i & 2 ? hs : -hs),
-                        z + (i & 4 ? hs : -hs)
-                    );
-                }
-                
-                // 6 faces (2 triangles each)
-                const faces = [
-                    [0, 1, 3, 2], [4, 6, 7, 5], // front, back
-                    [0, 4, 5, 1], [2, 3, 7, 6], // bottom, top
-                    [0, 2, 6, 4], [1, 5, 7, 3]  // left, right
-                ];
-                faces.forEach(f => {
-                    indices.push(idx + f[0], idx + f[1], idx + f[2]);
-                    indices.push(idx + f[0], idx + f[2], idx + f[3]);
-                });
-                return;
-            }
-            
-            const ns = s / 3;
-            for (let i = 0; i < 3; i++) {
-                for (let j = 0; j < 3; j++) {
-                    for (let k = 0; k < 3; k++) {
-                        // Skip middle of each face and center
-                        const sum = (i === 1 ? 1 : 0) + (j === 1 ? 1 : 0) + (k === 1 ? 1 : 0);
-                        if (sum < 2) {
-                            addCube(
-                                x + (i - 1) * ns,
-                                y + (j - 1) * ns,
-                                z + (k - 1) * ns,
-                                ns, d - 1
-                            );
-                        }
-                    }
-                }
-            }
-        };
-        
-        addCube(0, 0, 0, size * 1.5, depth);
-        
-        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-        geometry.setIndex(indices);
-        geometry.computeVertexNormals();
-        
         return geometry;
     }
 
     // =====================================================
-    // CENTER GEOMETRY
+    // CENTER
     // =====================================================
 
     createCenterGeometry() {
-        // Clear existing
-        while (this.centerGroup.children.length) {
-            const child = this.centerGroup.children[0];
-            this.centerGroup.remove(child);
-            if (child.geometry) child.geometry.dispose();
-            if (child.material) child.material.dispose();
-        }
-
+        this.clearGroup(this.centerGroup);
+        
         const geometry = this.createGeometry(this.settings.geometry, this.settings.detail);
 
-        // Solid inner mesh
+        // Solid core
         const solidMat = new THREE.MeshPhongMaterial({
-            color: 0x080808,
-            emissive: 0x111111,
-            transparent: true,
-            opacity: 0.4,
-            side: THREE.DoubleSide
+            color: 0x0a0a0a, emissive: 0x111111,
+            transparent: true, opacity: 0.5, side: THREE.DoubleSide
         });
         this.centerSolid = new THREE.Mesh(geometry, solidMat);
+        this.centerSolid.castShadow = true;
         this.centerGroup.add(this.centerSolid);
 
         // Wireframe
         const wireMat = new THREE.MeshBasicMaterial({
-            color: this.colors.primary,
-            wireframe: true,
-            transparent: true,
-            opacity: 0.85
+            color: this.colors.primary, wireframe: true, transparent: true, opacity: 0.9
         });
         this.centerWire = new THREE.Mesh(geometry.clone(), wireMat);
         this.centerWire.scale.setScalar(1.01);
         this.centerGroup.add(this.centerWire);
 
-        // Outer glow wireframe
+        // Glow shell
         const glowMat = new THREE.MeshBasicMaterial({
-            color: this.colors.secondary,
-            wireframe: true,
-            transparent: true,
-            opacity: 0.3
+            color: this.colors.secondary, wireframe: true, transparent: true, opacity: 0.25
         });
         this.centerGlow = new THREE.Mesh(geometry.clone(), glowMat);
-        this.centerGlow.scale.setScalar(1.08);
+        this.centerGlow.scale.setScalar(1.1);
         this.centerGroup.add(this.centerGlow);
     }
 
     // =====================================================
-    // SURROUND ELEMENTS
+    // RINGS
+    // =====================================================
+
+    createRings() {
+        this.clearGroup(this.ringsGroup);
+        
+        const { ringsStyle, ringsCount } = this.settings;
+        if (ringsStyle === 'none') return;
+
+        switch (ringsStyle) {
+            case 'orbital': this.createOrbitalRings(ringsCount); break;
+            case 'saturn': this.createSaturnRings(ringsCount); break;
+            case 'gyroscope': this.createGyroscopeRings(ringsCount); break;
+            case 'atomic': this.createAtomicRings(ringsCount); break;
+            case 'spiral': this.createSpiralRings(ringsCount); break;
+            case 'cage': this.createCageRings(ringsCount); break;
+        }
+    }
+
+    createOrbitalRings(count) {
+        for (let i = 0; i < count; i++) {
+            const radius = this.baseScale * (1.6 + i * 0.4);
+            const geometry = new THREE.TorusGeometry(radius, 0.02 + i * 0.005, 16, 100);
+            const material = new THREE.MeshBasicMaterial({
+                color: this.getGradientColor(i / count),
+                transparent: true, opacity: 0.6 - i * 0.08
+            });
+            const ring = new THREE.Mesh(geometry, material);
+            ring.rotation.x = Math.PI / 2 + (i * Math.PI / count / 2);
+            ring.rotation.y = i * 0.3;
+            ring.userData = { type: 'orbital', index: i, speed: 0.3 + i * 0.1 };
+            this.ringsGroup.add(ring);
+        }
+    }
+
+    createSaturnRings(count) {
+        for (let i = 0; i < count; i++) {
+            const innerR = this.baseScale * (1.4 + i * 0.25);
+            const outerR = innerR + 0.15 + Math.random() * 0.1;
+            const geometry = new THREE.RingGeometry(innerR, outerR, 64);
+            const material = new THREE.MeshBasicMaterial({
+                color: this.getGradientColor(i / count),
+                side: THREE.DoubleSide, transparent: true, opacity: 0.4 - i * 0.04
+            });
+            const ring = new THREE.Mesh(geometry, material);
+            ring.rotation.x = Math.PI / 2;
+            ring.userData = { type: 'saturn', index: i };
+            this.ringsGroup.add(ring);
+        }
+    }
+
+    createGyroscopeRings(count) {
+        for (let i = 0; i < count; i++) {
+            const radius = this.baseScale * (1.5 + i * 0.35);
+            const geometry = new THREE.TorusGeometry(radius, 0.03, 8, 64);
+            const material = new THREE.MeshBasicMaterial({
+                color: i % 2 === 0 ? this.colors.primary : this.colors.secondary,
+                transparent: true, opacity: 0.7
+            });
+            const ring = new THREE.Mesh(geometry, material);
+            ring.rotation.x = (i * Math.PI) / count;
+            ring.rotation.z = (i * Math.PI) / (count * 2);
+            ring.userData = { type: 'gyroscope', index: i, axis: i % 3 };
+            this.ringsGroup.add(ring);
+        }
+    }
+
+    createAtomicRings(count) {
+        const orbits = Math.min(count, 6);
+        for (let i = 0; i < orbits; i++) {
+            const radius = this.baseScale * (1.4 + i * 0.5);
+            const geometry = new THREE.TorusGeometry(radius, 0.015, 8, 80);
+            const material = new THREE.MeshBasicMaterial({
+                color: 0xffffff, transparent: true, opacity: 0.3
+            });
+            const ring = new THREE.Mesh(geometry, material);
+            ring.rotation.x = (i * Math.PI) / orbits;
+            ring.rotation.y = (i * Math.PI * 0.5) / orbits;
+            ring.userData = { type: 'atomicOrbit', index: i };
+            this.ringsGroup.add(ring);
+
+            // Electrons
+            for (let e = 0; e < 2 + i; e++) {
+                const elGeom = new THREE.SphereGeometry(0.12 + i * 0.02, 12, 12);
+                const elMat = new THREE.MeshBasicMaterial({ color: this.getGradientColor(e / (2 + i)) });
+                const electron = new THREE.Mesh(elGeom, elMat);
+                electron.userData = { 
+                    type: 'electron', orbitIndex: i, angle: (e / (2 + i)) * Math.PI * 2, 
+                    radius, rotX: ring.rotation.x, rotY: ring.rotation.y, speed: 1 + i * 0.3
+                };
+                this.ringsGroup.add(electron);
+            }
+        }
+    }
+
+    createSpiralRings(count) {
+        for (let i = 0; i < count; i++) {
+            const t = i / count;
+            const radius = this.baseScale * (1.3 + t * 1.5);
+            const y = (t - 0.5) * this.baseScale * 2;
+            const geometry = new THREE.TorusGeometry(radius, 0.025, 8, 64);
+            const material = new THREE.MeshBasicMaterial({
+                color: this.getGradientColor(t), transparent: true, opacity: 0.5
+            });
+            const ring = new THREE.Mesh(geometry, material);
+            ring.position.y = y;
+            ring.rotation.x = Math.PI / 2;
+            ring.userData = { type: 'spiral', index: i, baseY: y };
+            this.ringsGroup.add(ring);
+        }
+    }
+
+    createCageRings(count) {
+        for (let i = 0; i < count; i++) {
+            const size = this.baseScale * (1.4 + i * 0.3);
+            const geometry = i % 2 === 0 
+                ? new THREE.IcosahedronGeometry(size, 0)
+                : new THREE.DodecahedronGeometry(size, 0);
+            const material = new THREE.MeshBasicMaterial({
+                color: this.getGradientColor(i / count),
+                wireframe: true, transparent: true, opacity: 0.3 - i * 0.03
+            });
+            const cage = new THREE.Mesh(geometry, material);
+            cage.userData = { type: 'cage', index: i };
+            this.ringsGroup.add(cage);
+        }
+    }
+
+    // =====================================================
+    // SURROUND
     // =====================================================
 
     createSurroundElements() {
-        // Clear existing
-        while (this.surroundGroup.children.length) {
-            const child = this.surroundGroup.children[0];
-            this.surroundGroup.remove(child);
-            if (child.geometry) child.geometry.dispose();
-            if (child.material) {
-                if (Array.isArray(child.material)) {
-                    child.material.forEach(m => m.dispose());
-                } else {
-                    child.material.dispose();
-                }
-            }
-        }
-
-        const { surroundType, surroundCount, surroundComplexity } = this.settings;
+        this.clearGroup(this.surroundGroup);
+        
+        const { surroundType, surroundCount } = this.settings;
+        if (surroundType === 'none') return;
 
         switch (surroundType) {
-            case 'orbitalRings':
-                this.createOrbitalRings(surroundCount, surroundComplexity);
-                break;
-            case 'floatingPolyhedra':
-                this.createFloatingPolyhedra(surroundCount, surroundComplexity);
-                break;
-            case 'wireframeCage':
-                this.createWireframeCage(surroundCount, surroundComplexity);
-                break;
-            case 'spiralArms':
-                this.createSpiralArms(surroundCount, surroundComplexity);
-                break;
-            case 'particleCloud':
-                this.createParticleCloud(surroundCount * 20, surroundComplexity);
-                break;
-            case 'concentricSpheres':
-                this.createConcentricSpheres(Math.min(surroundCount / 4, 8), surroundComplexity);
-                break;
-            case 'dnaHelix':
-                this.createDNAHelix(surroundCount, surroundComplexity);
-                break;
-            case 'atomicOrbits':
-                this.createAtomicOrbits(Math.min(surroundCount / 4, 12), surroundComplexity);
-                break;
-            case 'none':
-            default:
-                break;
+            case 'floatingPolyhedra': this.createFloatingPolyhedra(surroundCount); break;
+            case 'particles': this.createParticleField(surroundCount * 10); break;
+            case 'asteroids': this.createAsteroids(surroundCount); break;
+            case 'crystals': this.createCrystals(surroundCount); break;
         }
     }
 
-    createOrbitalRings(count, complexity) {
-        const ringCount = 3 + complexity;
-        
-        for (let r = 0; r < ringCount; r++) {
-            const radius = this.baseScale * (1.8 + r * 0.5);
-            const segments = 64 + complexity * 32;
-            const tubeRadius = 0.02 + complexity * 0.01;
-            
-            const geometry = new THREE.TorusGeometry(radius, tubeRadius, 8, segments);
-            const material = new THREE.MeshBasicMaterial({
-                color: r % 2 === 0 ? this.colors.primary : this.colors.secondary,
-                transparent: true,
-                opacity: 0.5 - r * 0.08
-            });
-            
-            const ring = new THREE.Mesh(geometry, material);
-            ring.rotation.x = (r * Math.PI) / ringCount;
-            ring.rotation.y = (r * Math.PI * 0.5) / ringCount;
-            ring.userData = { type: 'ring', index: r, baseRadius: radius };
-            
-            this.surroundGroup.add(ring);
-        }
-
-        // Add orbital particles
-        for (let i = 0; i < count; i++) {
-            const ringIdx = i % ringCount;
-            const radius = this.baseScale * (1.8 + ringIdx * 0.5);
-            const angle = (i / count) * Math.PI * 2;
-            
-            const size = 0.08 + complexity * 0.04;
-            const geom = complexity > 2 
-                ? new THREE.OctahedronGeometry(size, 0)
-                : new THREE.SphereGeometry(size, 8, 8);
-            const mat = new THREE.MeshBasicMaterial({
-                color: this.colors.white,
-                transparent: true,
-                opacity: 0.8
-            });
-            
-            const particle = new THREE.Mesh(geom, mat);
-            particle.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
-            particle.userData = { type: 'orbitalParticle', angle, radius, ringIdx };
-            
-            this.surroundGroup.add(particle);
-        }
-    }
-
-    createFloatingPolyhedra(count, complexity) {
-        const geometryTypes = [
-            () => new THREE.TetrahedronGeometry(0.3 + complexity * 0.1, 0),
-            () => new THREE.OctahedronGeometry(0.25 + complexity * 0.1, 0),
-            () => new THREE.IcosahedronGeometry(0.25 + complexity * 0.1, complexity > 2 ? 1 : 0),
-            () => new THREE.DodecahedronGeometry(0.25 + complexity * 0.08, 0)
+    createFloatingPolyhedra(count) {
+        const geomTypes = [
+            () => new THREE.TetrahedronGeometry(0.3, 0),
+            () => new THREE.OctahedronGeometry(0.25, 0),
+            () => new THREE.IcosahedronGeometry(0.25, 0),
+            () => new THREE.DodecahedronGeometry(0.2, 0)
         ];
 
         for (let i = 0; i < count; i++) {
             const angle = (i / count) * Math.PI * 2;
-            const radius = this.baseScale * (1.5 + Math.random() * 2);
-            const y = (Math.random() - 0.5) * this.baseScale * 2;
+            const radius = this.baseScale * (2 + Math.random() * 2);
+            const y = (Math.random() - 0.5) * this.baseScale * 3;
             
-            const geomFn = geometryTypes[i % geometryTypes.length];
-            const geometry = geomFn();
-            
-            // Wireframe
-            const wireMat = new THREE.MeshBasicMaterial({
-                color: this.getGradientColor(i / count),
-                wireframe: true,
-                transparent: true,
-                opacity: 0.7
+            const geom = geomTypes[i % geomTypes.length]();
+            const mat = new THREE.MeshBasicMaterial({
+                color: this.getGradientColor(i / count), wireframe: true, transparent: true, opacity: 0.7
             });
-            
-            const mesh = new THREE.Mesh(geometry, wireMat);
-            mesh.position.set(
-                Math.cos(angle) * radius,
-                y,
-                Math.sin(angle) * radius
-            );
-            mesh.userData = { 
-                type: 'polyhedron', 
-                angle, 
-                radius, 
-                baseY: y,
-                rotSpeed: 0.5 + Math.random() * 1.5
-            };
-            
+            const mesh = new THREE.Mesh(geom, mat);
+            mesh.position.set(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
+            mesh.userData = { type: 'polyhedron', angle, radius, baseY: y, rotSpeed: 0.5 + Math.random() };
             this.surroundGroup.add(mesh);
         }
     }
 
-    createWireframeCage(count, complexity) {
-        // Nested cages
-        const cageCount = 2 + Math.floor(complexity / 2);
-        
-        for (let c = 0; c < cageCount; c++) {
-            const size = this.baseScale * (1.5 + c * 0.8);
-            const detail = complexity;
-            
-            const geometry = c % 2 === 0
-                ? new THREE.IcosahedronGeometry(size, detail)
-                : new THREE.DodecahedronGeometry(size, detail);
-            
-            const material = new THREE.MeshBasicMaterial({
-                color: c % 2 === 0 ? this.colors.primary : this.colors.secondary,
-                wireframe: true,
-                transparent: true,
-                opacity: 0.3 - c * 0.05
-            });
-            
-            const cage = new THREE.Mesh(geometry, material);
-            cage.userData = { type: 'cage', index: c };
-            
-            this.surroundGroup.add(cage);
-        }
-
-        // Vertex particles
-        const outerGeom = new THREE.IcosahedronGeometry(this.baseScale * (1.5 + (cageCount - 1) * 0.8), complexity);
-        const positions = outerGeom.attributes.position.array;
-        
-        for (let i = 0; i < Math.min(positions.length / 3, count); i++) {
-            const geom = new THREE.SphereGeometry(0.06, 6, 6);
-            const mat = new THREE.MeshBasicMaterial({
-                color: this.colors.white,
-                transparent: true,
-                opacity: 0.6
-            });
-            
-            const particle = new THREE.Mesh(geom, mat);
-            particle.position.set(
-                positions[i * 3],
-                positions[i * 3 + 1],
-                positions[i * 3 + 2]
-            );
-            particle.userData = { type: 'cageVertex', index: i };
-            
-            this.surroundGroup.add(particle);
-        }
-        
-        outerGeom.dispose();
-    }
-
-    createSpiralArms(count, complexity) {
-        const arms = 2 + complexity;
-        const pointsPerArm = Math.floor(count / arms);
-        
-        for (let a = 0; a < arms; a++) {
-            const armAngle = (a / arms) * Math.PI * 2;
-            
-            for (let i = 0; i < pointsPerArm; i++) {
-                const t = i / pointsPerArm;
-                const spiralAngle = armAngle + t * Math.PI * 3;
-                const radius = this.baseScale * (1.2 + t * 2);
-                const y = (t - 0.5) * this.baseScale * 2;
-                
-                const size = 0.1 + (1 - t) * 0.15;
-                const geom = complexity > 2
-                    ? new THREE.OctahedronGeometry(size, 0)
-                    : new THREE.SphereGeometry(size, 6, 6);
-                
-                const mat = new THREE.MeshBasicMaterial({
-                    color: this.getGradientColor(t),
-                    transparent: true,
-                    opacity: 0.7
-                });
-                
-                const particle = new THREE.Mesh(geom, mat);
-                particle.position.set(
-                    Math.cos(spiralAngle) * radius,
-                    y,
-                    Math.sin(spiralAngle) * radius
-                );
-                particle.userData = { type: 'spiral', arm: a, t, spiralAngle, radius, baseY: y };
-                
-                this.surroundGroup.add(particle);
-            }
-        }
-    }
-
-    createParticleCloud(count, complexity) {
-        const geometry = new THREE.BufferGeometry();
+    createParticleField(count) {
         const positions = new Float32Array(count * 3);
         const colors = new Float32Array(count * 3);
         
         for (let i = 0; i < count; i++) {
-            const radius = this.baseScale * (1.5 + Math.random() * 3);
+            const radius = this.baseScale * (2 + Math.random() * 4);
             const theta = Math.random() * Math.PI * 2;
             const phi = Math.acos(2 * Math.random() - 1);
-            
             positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
             positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
             positions[i * 3 + 2] = radius * Math.cos(phi);
             
-            const color = this.getGradientColor(Math.random());
-            colors[i * 3] = color.r;
-            colors[i * 3 + 1] = color.g;
-            colors[i * 3 + 2] = color.b;
+            const c = this.getGradientColor(Math.random());
+            colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
         }
         
-        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-        geometry.userData.originalPositions = positions.slice();
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        geom.userData.originalPositions = positions.slice();
         
-        const material = new THREE.PointsMaterial({
-            size: 0.1 + complexity * 0.05,
-            vertexColors: true,
-            transparent: true,
-            opacity: 0.7,
-            blending: THREE.AdditiveBlending
+        const mat = new THREE.PointsMaterial({
+            size: 0.15, vertexColors: true, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending
         });
-        
-        const points = new THREE.Points(geometry, material);
-        points.userData = { type: 'cloud' };
+        const points = new THREE.Points(geom, mat);
+        points.userData = { type: 'particleField' };
         this.surroundGroup.add(points);
     }
 
-    createConcentricSpheres(count, complexity) {
+    createAsteroids(count) {
         for (let i = 0; i < count; i++) {
-            const radius = this.baseScale * (1.3 + i * 0.4);
-            const detail = complexity + 1;
+            const size = 0.2 + Math.random() * 0.4;
+            const geom = new THREE.DodecahedronGeometry(size, 0);
             
-            const geometry = new THREE.IcosahedronGeometry(radius, detail);
-            const material = new THREE.MeshBasicMaterial({
-                color: this.getGradientColor(i / count),
-                wireframe: true,
-                transparent: true,
-                opacity: 0.2 - i * 0.02
-            });
-            
-            const sphere = new THREE.Mesh(geometry, material);
-            sphere.userData = { type: 'concentricSphere', index: i };
-            
-            this.surroundGroup.add(sphere);
-        }
-    }
-
-    createDNAHelix(count, complexity) {
-        const turns = 2 + complexity;
-        const radius = this.baseScale * 1.5;
-        const height = this.baseScale * 4;
-        
-        for (let strand = 0; strand < 2; strand++) {
-            const strandOffset = strand * Math.PI;
-            
-            for (let i = 0; i < count; i++) {
-                const t = i / count;
-                const angle = t * Math.PI * 2 * turns + strandOffset;
-                const y = (t - 0.5) * height;
-                
-                const size = 0.12 + complexity * 0.03;
-                const geom = new THREE.SphereGeometry(size, 8, 8);
-                const mat = new THREE.MeshBasicMaterial({
-                    color: strand === 0 ? this.colors.primary : this.colors.secondary,
-                    transparent: true,
-                    opacity: 0.8
-                });
-                
-                const node = new THREE.Mesh(geom, mat);
-                node.position.set(
-                    Math.cos(angle) * radius,
-                    y,
-                    Math.sin(angle) * radius
-                );
-                node.userData = { type: 'dnaNode', strand, t, angle, baseY: y };
-                
-                this.surroundGroup.add(node);
-                
-                // Connection to other strand
-                if (i % 4 === 0 && complexity > 1) {
-                    const otherAngle = angle + Math.PI;
-                    const lineGeom = new THREE.BufferGeometry().setFromPoints([
-                        new THREE.Vector3(Math.cos(angle) * radius, y, Math.sin(angle) * radius),
-                        new THREE.Vector3(Math.cos(otherAngle) * radius, y, Math.sin(otherAngle) * radius)
-                    ]);
-                    const lineMat = new THREE.LineBasicMaterial({
-                        color: this.colors.white,
-                        transparent: true,
-                        opacity: 0.3
-                    });
-                    const line = new THREE.Line(lineGeom, lineMat);
-                    line.userData = { type: 'dnaLink' };
-                    this.surroundGroup.add(line);
-                }
+            // Distort vertices
+            const pos = geom.attributes.position.array;
+            for (let j = 0; j < pos.length; j += 3) {
+                pos[j] *= 0.8 + Math.random() * 0.4;
+                pos[j + 1] *= 0.8 + Math.random() * 0.4;
+                pos[j + 2] *= 0.8 + Math.random() * 0.4;
             }
+            geom.attributes.position.needsUpdate = true;
+            geom.computeVertexNormals();
+            
+            const mat = new THREE.MeshPhongMaterial({
+                color: 0x444444, emissive: 0x111111, flatShading: true
+            });
+            const asteroid = new THREE.Mesh(geom, mat);
+            
+            const angle = Math.random() * Math.PI * 2;
+            const radius = this.baseScale * (2.5 + Math.random() * 2.5);
+            const y = (Math.random() - 0.5) * this.baseScale * 4;
+            asteroid.position.set(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
+            asteroid.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+            asteroid.userData = { type: 'asteroid', angle, radius, baseY: y, rotSpeed: Math.random() * 2 };
+            this.surroundGroup.add(asteroid);
         }
     }
 
-    createAtomicOrbits(count, complexity) {
-        const electronCount = count;
-        
-        // Orbits
-        for (let o = 0; o < 3; o++) {
-            const radius = this.baseScale * (1.5 + o * 0.6);
-            const geometry = new THREE.TorusGeometry(radius, 0.015, 8, 64);
-            const material = new THREE.MeshBasicMaterial({
-                color: this.colors.white,
-                transparent: true,
-                opacity: 0.2
+    createCrystals(count) {
+        for (let i = 0; i < count; i++) {
+            const h = 0.3 + Math.random() * 0.5;
+            const geom = new THREE.ConeGeometry(0.1 + Math.random() * 0.1, h, 6);
+            const mat = new THREE.MeshPhongMaterial({
+                color: this.getGradientColor(i / count),
+                emissive: this.getGradientColor(i / count),
+                emissiveIntensity: 0.3, transparent: true, opacity: 0.8
             });
+            const crystal = new THREE.Mesh(geom, mat);
             
-            const orbit = new THREE.Mesh(geometry, material);
-            orbit.rotation.x = (o * Math.PI) / 3;
-            orbit.rotation.y = (o * Math.PI) / 4;
-            orbit.userData = { type: 'orbit', index: o };
-            
-            this.surroundGroup.add(orbit);
-        }
-        
-        // Electrons
-        for (let e = 0; e < electronCount; e++) {
-            const orbitIdx = e % 3;
-            const angle = (e / electronCount) * Math.PI * 2;
-            const radius = this.baseScale * (1.5 + orbitIdx * 0.6);
-            
-            const size = 0.15 + complexity * 0.05;
-            const geom = complexity > 2
-                ? new THREE.IcosahedronGeometry(size, 0)
-                : new THREE.SphereGeometry(size, 8, 8);
-            
-            const mat = new THREE.MeshBasicMaterial({
-                color: this.getGradientColor(e / electronCount),
-                transparent: true,
-                opacity: 0.9
-            });
-            
-            const electron = new THREE.Mesh(geom, mat);
-            electron.userData = { type: 'electron', orbitIdx, angle, radius };
-            
-            this.surroundGroup.add(electron);
+            const angle = (i / count) * Math.PI * 2 + Math.random() * 0.5;
+            const radius = this.baseScale * (2 + Math.random() * 2);
+            const y = (Math.random() - 0.5) * this.baseScale * 3;
+            crystal.position.set(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
+            crystal.rotation.set(Math.random() * Math.PI, 0, Math.random() * Math.PI);
+            crystal.userData = { type: 'crystal', angle, radius, baseY: y };
+            this.surroundGroup.add(crystal);
         }
     }
 
     // =====================================================
-    // BACKGROUND PARTICLES
+    // BACKGROUND - FLYING OBJECTS
     // =====================================================
 
-    createBackgroundParticles() {
-        if (this.particles) {
-            this.scene.remove(this.particles);
-            this.particles.geometry.dispose();
-            this.particles.material.dispose();
-        }
+    createBackgroundElements() {
+        this.clearGroup(this.backgroundGroup);
+        this.flyingObjects = [];
+        
+        const { backgroundType, backgroundDensity } = this.settings;
+        if (backgroundType === 'none') return;
 
-        const count = 600;
-        const positions = new Float32Array(count * 3);
+        switch (backgroundType) {
+            case 'flyingDebris': this.createFlyingDebris(backgroundDensity); break;
+            case 'starfield': this.createStarfield(backgroundDensity * 5); break;
+            case 'meteors': this.createMeteors(Math.floor(backgroundDensity / 3)); break;
+            case 'nebula': this.createNebula(backgroundDensity * 3); break;
+            case 'grid': this.createGridPlane(); break;
+        }
+    }
+
+    createFlyingDebris(count) {
+        const geomTypes = [
+            () => new THREE.TetrahedronGeometry(0.5 + Math.random() * 0.5, 0),
+            () => new THREE.OctahedronGeometry(0.4 + Math.random() * 0.4, 0),
+            () => new THREE.BoxGeometry(0.4, 0.6, 0.3),
+            () => new THREE.DodecahedronGeometry(0.3, 0)
+        ];
 
         for (let i = 0; i < count; i++) {
-            const radius = 20 + Math.random() * 50;
-            const theta = Math.random() * Math.PI * 2;
-            const phi = Math.acos(2 * Math.random() - 1);
-
-            positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
-            positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
-            positions[i * 3 + 2] = radius * Math.cos(phi);
+            const geom = geomTypes[Math.floor(Math.random() * geomTypes.length)]();
+            const mat = new THREE.MeshPhongMaterial({
+                color: Math.random() > 0.5 ? 0x333333 : this.getGradientColor(Math.random()).getHex(),
+                emissive: 0x111111, flatShading: true, transparent: true, opacity: 0.8
+            });
+            const debris = new THREE.Mesh(geom, mat);
+            
+            // Random position far away
+            const x = (Math.random() - 0.5) * 200;
+            const y = (Math.random() - 0.5) * 100;
+            const z = -50 - Math.random() * 150;
+            debris.position.set(x, y, z);
+            debris.rotation.set(Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2);
+            
+            debris.userData = {
+                type: 'debris',
+                velocity: new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.5,
+                    (Math.random() - 0.5) * 0.3,
+                    2 + Math.random() * 3
+                ),
+                rotVel: new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.02,
+                    (Math.random() - 0.5) * 0.02,
+                    (Math.random() - 0.5) * 0.02
+                ),
+                startZ: z
+            };
+            
+            this.flyingObjects.push(debris);
+            this.backgroundGroup.add(debris);
         }
+    }
 
-        const geometry = new THREE.BufferGeometry();
-        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        geometry.userData.originalPositions = positions.slice();
-
-        const material = new THREE.PointsMaterial({
-            color: 0xffffff,
-            size: 0.06,
-            transparent: true,
-            opacity: 0.5,
-            blending: THREE.AdditiveBlending
+    createStarfield(count) {
+        const positions = new Float32Array(count * 3);
+        const sizes = new Float32Array(count);
+        
+        for (let i = 0; i < count; i++) {
+            positions[i * 3] = (Math.random() - 0.5) * 300;
+            positions[i * 3 + 1] = (Math.random() - 0.5) * 200;
+            positions[i * 3 + 2] = -20 - Math.random() * 200;
+            sizes[i] = 0.5 + Math.random() * 2;
+        }
+        
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geom.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+        geom.userData.originalPositions = positions.slice();
+        
+        const mat = new THREE.PointsMaterial({
+            color: 0xffffff, size: 0.1, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending
         });
+        const stars = new THREE.Points(geom, mat);
+        stars.userData = { type: 'starfield' };
+        this.backgroundGroup.add(stars);
+    }
 
-        this.particles = new THREE.Points(geometry, material);
-        this.scene.add(this.particles);
+    createMeteors(count) {
+        for (let i = 0; i < count; i++) {
+            // Meteor head
+            const headGeom = new THREE.SphereGeometry(0.3 + Math.random() * 0.3, 8, 8);
+            const headMat = new THREE.MeshBasicMaterial({
+                color: this.getGradientColor(Math.random())
+            });
+            const head = new THREE.Mesh(headGeom, headMat);
+            
+            // Trail
+            const trailGeom = new THREE.ConeGeometry(0.3, 3 + Math.random() * 4, 8);
+            const trailMat = new THREE.MeshBasicMaterial({
+                color: this.colors.secondary, transparent: true, opacity: 0.4
+            });
+            const trail = new THREE.Mesh(trailGeom, trailMat);
+            trail.rotation.x = Math.PI / 2;
+            trail.position.z = 2;
+            
+            const meteor = new THREE.Group();
+            meteor.add(head);
+            meteor.add(trail);
+            
+            const x = (Math.random() - 0.5) * 150;
+            const y = 30 + Math.random() * 50;
+            const z = -100 - Math.random() * 100;
+            meteor.position.set(x, y, z);
+            meteor.rotation.x = -0.5;
+            
+            meteor.userData = {
+                type: 'meteor',
+                velocity: new THREE.Vector3(
+                    (Math.random() - 0.5) * 2,
+                    -3 - Math.random() * 3,
+                    5 + Math.random() * 5
+                ),
+                startPos: meteor.position.clone()
+            };
+            
+            this.flyingObjects.push(meteor);
+            this.backgroundGroup.add(meteor);
+        }
+    }
+
+    createNebula(count) {
+        const positions = new Float32Array(count * 3);
+        const colors = new Float32Array(count * 3);
+        const sizes = new Float32Array(count);
+        
+        for (let i = 0; i < count; i++) {
+            const r = 30 + Math.random() * 100;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.random() * Math.PI;
+            
+            positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+            positions[i * 3 + 1] = (Math.random() - 0.5) * 60;
+            positions[i * 3 + 2] = -30 - r * Math.cos(phi);
+            
+            const c = this.getGradientColor(Math.random());
+            colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
+            sizes[i] = 1 + Math.random() * 3;
+        }
+        
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        geom.userData.originalPositions = positions.slice();
+        
+        const mat = new THREE.PointsMaterial({
+            size: 0.5, vertexColors: true, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending
+        });
+        const nebula = new THREE.Points(geom, mat);
+        nebula.userData = { type: 'nebula' };
+        this.backgroundGroup.add(nebula);
+    }
+
+    createGridPlane() {
+        const gridHelper = new THREE.GridHelper(200, 50, 0x333333, 0x222222);
+        gridHelper.position.y = -20;
+        gridHelper.userData = { type: 'grid' };
+        this.backgroundGroup.add(gridHelper);
+
+        // Add depth lines
+        for (let i = 0; i < 20; i++) {
+            const points = [
+                new THREE.Vector3((i - 10) * 10, -20, 0),
+                new THREE.Vector3((i - 10) * 10, -20, -200)
+            ];
+            const geom = new THREE.BufferGeometry().setFromPoints(points);
+            const mat = new THREE.LineBasicMaterial({ color: 0x333333, transparent: true, opacity: 0.5 });
+            const line = new THREE.Line(geom, mat);
+            this.backgroundGroup.add(line);
+        }
+    }
+
+    // =====================================================
+    // DEEP PARTICLES
+    // =====================================================
+
+    createDeepParticles() {
+        this.clearGroup(this.particlesGroup);
+        
+        const count = 1000;
+        const positions = new Float32Array(count * 3);
+        
+        for (let i = 0; i < count; i++) {
+            positions[i * 3] = (Math.random() - 0.5) * 300;
+            positions[i * 3 + 1] = (Math.random() - 0.5) * 200;
+            positions[i * 3 + 2] = -Math.random() * 300;
+        }
+        
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geom.userData.originalPositions = positions.slice();
+        
+        const mat = new THREE.PointsMaterial({
+            color: 0xffffff, size: 0.05, transparent: true, opacity: 0.4
+        });
+        const particles = new THREE.Points(geom, mat);
+        particles.userData = { type: 'deepParticles' };
+        this.particlesGroup.add(particles);
     }
 
     // =====================================================
     // HELPERS
     // =====================================================
 
+    clearGroup(group) {
+        while (group.children.length) {
+            const child = group.children[0];
+            group.remove(child);
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) {
+                if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                else child.material.dispose();
+            }
+        }
+    }
+
     getGradientColor(t) {
-        return this.colors.primary.clone().lerp(this.colors.secondary, t);
+        if (t < 0.5) {
+            return this.colors.primary.clone().lerp(this.colors.secondary, t * 2);
+        }
+        return this.colors.secondary.clone().lerp(this.colors.tertiary, (t - 0.5) * 2);
     }
 
     onResize() {
-        const width = window.innerWidth;
-        const height = window.innerHeight;
-
-        this.camera.aspect = width / height;
+        const w = window.innerWidth, h = window.innerHeight;
+        this.camera.aspect = w / h;
         this.camera.updateProjectionMatrix();
-
-        this.renderer.setSize(width, height);
-        this.composer.setSize(width, height);
+        this.renderer.setSize(w, h);
+        this.composer.setSize(w, h);
     }
 
     // =====================================================
@@ -954,7 +787,7 @@ export class Visualizer {
         this.time += delta;
 
         // Smooth audio
-        const s = 0.15;
+        const s = 0.12;
         this.smoothedAudio.amplitude += (audioData.amplitude - this.smoothedAudio.amplitude) * s;
         this.smoothedAudio.bass += (audioData.bass - this.smoothedAudio.bass) * s;
         this.smoothedAudio.mid += (audioData.mid - this.smoothedAudio.mid) * s;
@@ -962,271 +795,256 @@ export class Visualizer {
 
         const { amplitude, bass, mid, treble } = this.smoothedAudio;
 
-        // Update center
         this.updateCenter(amplitude, bass, mid, delta);
-
-        // Update surround
+        this.updateRings(audioData, delta);
         this.updateSurround(audioData, delta);
+        this.updateBackground(delta);
+        this.updateLights(amplitude, bass, treble);
+        this.updateCamera();
 
-        // Update particles
-        this.updateParticles(amplitude, delta);
-
-        // Update lights
-        this.mainLight.intensity = 1.5 + amplitude * 2;
-        this.accentLight.position.x = Math.sin(this.time * 0.3) * 15;
-        this.accentLight.position.y = Math.cos(this.time * 0.2) * 10;
-
-        // Update bloom
-        this.bloomPass.strength = 0.5 + amplitude * 0.8;
-
-        // Camera
-        this.camera.position.x = Math.sin(this.time * 0.08) * 3;
-        this.camera.position.y = Math.cos(this.time * 0.1) * 2;
-        this.camera.lookAt(0, 0, 0);
-
+        this.bloomPass.strength = 0.7 + amplitude * 1.0;
         this.composer.render();
     }
 
     updateCenter(amplitude, bass, mid, delta) {
         if (!this.centerSolid) return;
 
-        // Scale
-        const scale = 1 + bass * 0.4;
+        const scale = 1 + bass * 0.5;
         this.centerGroup.scale.lerp(new THREE.Vector3(scale, scale, scale), 0.1);
+        this.centerGroup.rotation.x += delta * (0.15 + mid * 0.4);
+        this.centerGroup.rotation.y += delta * (0.25 + mid * 0.5);
 
-        // Rotation
-        const rotSpeed = 0.2 + mid * 0.5;
-        this.centerGroup.rotation.x += delta * rotSpeed * 0.3;
-        this.centerGroup.rotation.y += delta * rotSpeed;
-
-        // Colors
         const hsl = {};
         this.colors.primary.getHSL(hsl);
-        this.centerWire.material.color.setHSL(hsl.h, hsl.s, 0.4 + amplitude * 0.4);
+        this.centerWire.material.color.setHSL(hsl.h, hsl.s, 0.4 + amplitude * 0.5);
         this.centerWire.material.opacity = 0.6 + amplitude * 0.4;
-        this.centerSolid.material.emissive.setHSL(hsl.h, 0.5, amplitude * 0.15);
     }
 
-    updateSurround(audioData, delta) {
+    updateRings(audioData, delta) {
         const { amplitude, bass, mid, frequencies } = audioData;
+        
+        this.ringsGroup.children.forEach((child, idx) => {
+            const d = child.userData;
+            if (!d.type) return;
 
-        this.surroundGroup.children.forEach((child, idx) => {
-            const data = child.userData;
-            
-            switch (data.type) {
-                case 'ring':
-                    child.rotation.z += delta * (0.2 + amplitude * 0.3) * (data.index % 2 === 0 ? 1 : -1);
+            switch (d.type) {
+                case 'orbital':
+                    child.rotation.z += delta * d.speed * (1 + amplitude);
                     child.scale.setScalar(1 + bass * 0.2);
                     break;
-
-                case 'orbitalParticle':
-                    const newAngle = data.angle + this.time * (0.5 + data.ringIdx * 0.2);
-                    child.position.x = Math.cos(newAngle) * data.radius;
-                    child.position.z = Math.sin(newAngle) * data.radius;
-                    const freqIdx = Math.floor((idx / this.surroundGroup.children.length) * (frequencies?.length || 64) * 0.5);
-                    child.scale.setScalar(1 + (frequencies?.[freqIdx] || 0) * 2);
-                    break;
-
-                case 'polyhedron':
-                    child.rotation.x += delta * data.rotSpeed * (1 + amplitude);
-                    child.rotation.y += delta * data.rotSpeed * 0.7;
-                    child.position.y = data.baseY + Math.sin(this.time + data.angle) * 0.5;
-                    break;
-
-                case 'cage':
-                    child.rotation.x += delta * 0.1 * (data.index % 2 === 0 ? 1 : -1);
-                    child.rotation.y += delta * 0.15 * (data.index % 2 === 0 ? -1 : 1);
-                    child.scale.setScalar(1 + bass * 0.1);
-                    break;
-
-                case 'spiral':
-                    const spiralPush = (frequencies?.[Math.floor(data.t * 32)] || 0) * 0.5;
-                    const newSpiralAngle = data.spiralAngle + this.time * 0.3;
-                    child.position.x = Math.cos(newSpiralAngle) * (data.radius + spiralPush);
-                    child.position.z = Math.sin(newSpiralAngle) * (data.radius + spiralPush);
-                    break;
-
-                case 'cloud':
-                    if (child.geometry.userData.originalPositions) {
-                        const positions = child.geometry.attributes.position.array;
-                        const original = child.geometry.userData.originalPositions;
-                        const count = positions.length / 3;
-                        
-                        for (let i = 0; i < count; i++) {
-                            const i3 = i * 3;
-                            const freq = frequencies?.[i % (frequencies.length || 1)] || 0;
-                            positions[i3] = original[i3] * (1 + freq * 0.3);
-                            positions[i3 + 1] = original[i3 + 1] * (1 + freq * 0.3);
-                            positions[i3 + 2] = original[i3 + 2] * (1 + freq * 0.3);
-                        }
-                        child.geometry.attributes.position.needsUpdate = true;
-                    }
-                    child.rotation.y += delta * 0.05;
-                    break;
-
-                case 'concentricSphere':
-                    child.rotation.x += delta * 0.05 * (data.index + 1);
-                    child.rotation.y += delta * 0.08 * (data.index + 1);
+                case 'saturn':
+                    child.rotation.z += delta * 0.1;
                     child.scale.setScalar(1 + mid * 0.15);
                     break;
-
-                case 'dnaNode':
-                    const dnaAngle = data.angle + this.time * 0.5;
-                    child.position.x = Math.cos(dnaAngle) * this.baseScale * 1.5;
-                    child.position.z = Math.sin(dnaAngle) * this.baseScale * 1.5;
-                    child.scale.setScalar(1 + amplitude * 0.5);
+                case 'gyroscope':
+                    const axes = ['x', 'y', 'z'];
+                    child.rotation[axes[d.axis]] += delta * (0.5 + amplitude) * (d.index % 2 === 0 ? 1 : -1);
                     break;
-
+                case 'atomicOrbit':
+                    child.rotation.z += delta * 0.2;
+                    break;
                 case 'electron':
-                    const electronAngle = data.angle + this.time * (1 + data.orbitIdx * 0.5);
-                    const orbitRotX = (data.orbitIdx * Math.PI) / 3;
-                    const orbitRotY = (data.orbitIdx * Math.PI) / 4;
-                    
-                    let x = Math.cos(electronAngle) * data.radius;
+                    d.angle += delta * d.speed * (1 + amplitude * 2);
+                    let x = Math.cos(d.angle) * d.radius;
                     let y = 0;
-                    let z = Math.sin(electronAngle) * data.radius;
-                    
+                    let z = Math.sin(d.angle) * d.radius;
                     // Apply orbit rotation
-                    const cosX = Math.cos(orbitRotX), sinX = Math.sin(orbitRotX);
-                    const cosY = Math.cos(orbitRotY), sinY = Math.sin(orbitRotY);
-                    
-                    let ny = y * cosX - z * sinX;
-                    let nz = y * sinX + z * cosX;
-                    y = ny; z = nz;
-                    
-                    let nx = x * cosY + z * sinY;
-                    nz = -x * sinY + z * cosY;
-                    x = nx; z = nz;
-                    
+                    const cosX = Math.cos(d.rotX), sinX = Math.sin(d.rotX);
+                    const cosY = Math.cos(d.rotY), sinY = Math.sin(d.rotY);
+                    let ny = y * cosX - z * sinX, nz = y * sinX + z * cosX; y = ny; z = nz;
+                    let nx = x * cosY + z * sinY; nz = -x * sinY + z * cosY; x = nx; z = nz;
                     child.position.set(x, y, z);
-                    child.scale.setScalar(1 + amplitude * 0.8);
+                    child.scale.setScalar(1 + amplitude);
+                    break;
+                case 'spiral':
+                    child.rotation.z += delta * 0.3;
+                    child.position.y = d.baseY + Math.sin(this.time + d.index) * 0.3;
+                    break;
+                case 'cage':
+                    child.rotation.x += delta * 0.1 * (d.index % 2 === 0 ? 1 : -1);
+                    child.rotation.y += delta * 0.15 * (d.index % 2 === 0 ? -1 : 1);
                     break;
             }
         });
     }
 
-    updateParticles(amplitude, delta) {
-        if (!this.particles) return;
+    updateSurround(audioData, delta) {
+        const { amplitude, bass, frequencies } = audioData;
+        
+        this.surroundGroup.children.forEach((child, idx) => {
+            const d = child.userData;
+            if (!d.type) return;
 
-        const positions = this.particles.geometry.attributes.position.array;
-        const original = this.particles.geometry.userData.originalPositions;
+            switch (d.type) {
+                case 'polyhedron':
+                case 'crystal':
+                    child.rotation.x += delta * (d.rotSpeed || 0.5) * (1 + amplitude);
+                    child.rotation.y += delta * (d.rotSpeed || 0.5) * 0.7;
+                    child.position.y = d.baseY + Math.sin(this.time + d.angle) * 0.5;
+                    break;
+                case 'particleField':
+                    if (child.geometry.userData.originalPositions) {
+                        const pos = child.geometry.attributes.position.array;
+                        const orig = child.geometry.userData.originalPositions;
+                        for (let i = 0; i < pos.length / 3; i++) {
+                            const f = frequencies?.[i % (frequencies.length || 1)] || 0;
+                            pos[i * 3] = orig[i * 3] * (1 + f * 0.3);
+                            pos[i * 3 + 1] = orig[i * 3 + 1] * (1 + f * 0.3);
+                            pos[i * 3 + 2] = orig[i * 3 + 2] * (1 + f * 0.3);
+                        }
+                        child.geometry.attributes.position.needsUpdate = true;
+                    }
+                    child.rotation.y += delta * 0.05;
+                    break;
+                case 'asteroid':
+                    child.rotation.x += delta * d.rotSpeed;
+                    child.rotation.y += delta * d.rotSpeed * 0.7;
+                    d.angle += delta * 0.1;
+                    child.position.x = Math.cos(d.angle) * d.radius;
+                    child.position.z = Math.sin(d.angle) * d.radius;
+                    break;
+            }
+        });
+    }
 
-        for (let i = 0; i < positions.length / 3; i++) {
-            const i3 = i * 3;
-            const offset = i * 0.01;
-            positions[i3] = original[i3] + Math.sin(this.time * 0.15 + offset) * 0.5;
-            positions[i3 + 1] = original[i3 + 1] + Math.cos(this.time * 0.1 + offset) * 0.5;
-            positions[i3 + 2] = original[i3 + 2] + Math.sin(this.time * 0.08 + offset * 2) * 0.3;
-        }
+    updateBackground(delta) {
+        // Update flying objects
+        this.flyingObjects.forEach(obj => {
+            const d = obj.userData;
+            
+            if (d.type === 'debris') {
+                obj.position.add(d.velocity.clone().multiplyScalar(delta * 10));
+                obj.rotation.x += d.rotVel.x;
+                obj.rotation.y += d.rotVel.y;
+                obj.rotation.z += d.rotVel.z;
+                
+                // Reset if passed camera
+                if (obj.position.z > 50) {
+                    obj.position.z = d.startZ;
+                    obj.position.x = (Math.random() - 0.5) * 200;
+                    obj.position.y = (Math.random() - 0.5) * 100;
+                }
+            } else if (d.type === 'meteor') {
+                obj.position.add(d.velocity.clone().multiplyScalar(delta * 10));
+                
+                if (obj.position.z > 50 || obj.position.y < -80) {
+                    obj.position.copy(d.startPos);
+                    obj.position.x = (Math.random() - 0.5) * 150;
+                }
+            }
+        });
 
-        this.particles.geometry.attributes.position.needsUpdate = true;
-        this.particles.material.opacity = 0.3 + amplitude * 0.3;
-        this.particles.rotation.y += delta * 0.01;
+        // Update starfield/nebula particles
+        this.backgroundGroup.children.forEach(child => {
+            const d = child.userData;
+            if (d.type === 'starfield' || d.type === 'nebula') {
+                if (child.geometry.userData.originalPositions) {
+                    const pos = child.geometry.attributes.position.array;
+                    const orig = child.geometry.userData.originalPositions;
+                    for (let i = 0; i < pos.length / 3; i++) {
+                        pos[i * 3 + 2] = orig[i * 3 + 2] + Math.sin(this.time * 0.5 + i * 0.01) * 2;
+                    }
+                    child.geometry.attributes.position.needsUpdate = true;
+                }
+            }
+        });
+
+        // Deep particles drift
+        this.particlesGroup.children.forEach(child => {
+            if (child.userData.type === 'deepParticles') {
+                const pos = child.geometry.attributes.position.array;
+                const orig = child.geometry.userData.originalPositions;
+                for (let i = 0; i < pos.length / 3; i++) {
+                    pos[i * 3] = orig[i * 3] + Math.sin(this.time * 0.1 + i * 0.01) * 2;
+                    pos[i * 3 + 1] = orig[i * 3 + 1] + Math.cos(this.time * 0.08 + i * 0.01) * 2;
+                }
+                child.geometry.attributes.position.needsUpdate = true;
+                child.rotation.y += delta * 0.005;
+            }
+        });
+    }
+
+    updateLights(amplitude, bass, treble) {
+        this.mainLight.intensity = 2 + amplitude * 3;
+        this.accentLight.intensity = 1 + bass * 2;
+        this.backLight.intensity = 1 + treble * 2;
+        
+        this.accentLight.position.x = Math.sin(this.time * 0.3) * 20;
+        this.accentLight.position.y = Math.cos(this.time * 0.2) * 15;
+        this.backLight.position.x = Math.cos(this.time * 0.25) * 15;
+    }
+
+    updateCamera() {
+        this.camera.position.x = Math.sin(this.time * 0.05) * 5;
+        this.camera.position.y = Math.cos(this.time * 0.07) * 3;
+        this.camera.lookAt(0, 0, 0);
     }
 
     // =====================================================
     // API
     // =====================================================
 
-    setGeometry(type) {
-        this.settings.geometry = type;
-        this.createCenterGeometry();
-    }
-
-    setDetail(level) {
-        this.settings.detail = level;
-        this.createCenterGeometry();
-    }
-
-    setSurroundType(type) {
-        this.settings.surroundType = type;
-        this.createSurroundElements();
-    }
-
-    setSurroundCount(count) {
-        this.settings.surroundCount = count;
-        this.createSurroundElements();
-    }
-
-    setSurroundComplexity(complexity) {
-        this.settings.surroundComplexity = complexity;
-        this.createSurroundElements();
-    }
+    setGeometry(type) { this.settings.geometry = type; this.createCenterGeometry(); }
+    setDetail(level) { this.settings.detail = level; this.createCenterGeometry(); }
+    setRingsStyle(style) { this.settings.ringsStyle = style; this.createRings(); }
+    setRingsCount(count) { this.settings.ringsCount = count; this.createRings(); }
+    setSurroundType(type) { this.settings.surroundType = type; this.createSurroundElements(); }
+    setSurroundCount(count) { this.settings.surroundCount = count; this.createSurroundElements(); }
+    setBackgroundType(type) { this.settings.backgroundType = type; this.createBackgroundElements(); }
+    setBackgroundDensity(density) { this.settings.backgroundDensity = density; this.createBackgroundElements(); }
 
     randomize() {
-        const geometries = ['icosahedron', 'octahedron', 'dodecahedron', 'stellatedOcta', 
-                           'torusKnot', 'kleinBottle', 'mobiusStrip', 'sierpinski', 'geodesic'];
-        const surrounds = ['orbitalRings', 'floatingPolyhedra', 'wireframeCage', 
-                          'spiralArms', 'dnaHelix', 'atomicOrbits'];
-        
-        const newGeom = geometries[Math.floor(Math.random() * geometries.length)];
+        const geoms = ['icosahedron', 'octahedron', 'dodecahedron', 'torusKnot', 'kleinBottle', 'geodesic'];
+        const rings = ['orbital', 'saturn', 'gyroscope', 'atomic', 'spiral'];
+        const surrounds = ['floatingPolyhedra', 'particles', 'asteroids', 'crystals'];
+        const bgs = ['flyingDebris', 'starfield', 'meteors', 'nebula'];
+
+        const newGeom = geoms[Math.floor(Math.random() * geoms.length)];
+        const newRings = rings[Math.floor(Math.random() * rings.length)];
         const newSurround = surrounds[Math.floor(Math.random() * surrounds.length)];
+        const newBg = bgs[Math.floor(Math.random() * bgs.length)];
         const newDetail = Math.floor(Math.random() * 4) + 2;
-        
+
         // Random colors
-        const hue1 = Math.random();
-        const hue2 = (hue1 + 0.3 + Math.random() * 0.4) % 1;
-        this.colors.primary.setHSL(hue1, 0.8, 0.6);
-        this.colors.secondary.setHSL(hue2, 0.9, 0.55);
+        const h1 = Math.random(), h2 = (h1 + 0.3 + Math.random() * 0.3) % 1, h3 = (h2 + 0.2) % 1;
+        this.colors.primary.setHSL(h1, 0.8, 0.6);
+        this.colors.secondary.setHSL(h2, 0.9, 0.55);
+        this.colors.tertiary.setHSL(h3, 0.7, 0.5);
 
         this.settings.geometry = newGeom;
         this.settings.detail = newDetail;
+        this.settings.ringsStyle = newRings;
         this.settings.surroundType = newSurround;
-        
-        this.createCenterGeometry();
-        this.createSurroundElements();
+        this.settings.backgroundType = newBg;
 
-        // Update lights
+        this.createCenterGeometry();
+        this.createRings();
+        this.createSurroundElements();
+        this.createBackgroundElements();
+
         this.mainLight.color.copy(this.colors.primary);
         this.accentLight.color.copy(this.colors.secondary);
+        this.backLight.color.copy(this.colors.tertiary);
 
-        return { geometry: newGeom, detail: newDetail, surround: newSurround };
+        return { geometry: newGeom, detail: newDetail, rings: newRings, surround: newSurround, background: newBg };
     }
 
     renderIdle() {
         const delta = this.clock.getDelta();
         this.time += delta;
-
-        const idleData = {
+        
+        this.update({
             amplitude: 0.05 + Math.sin(this.time * 0.5) * 0.03,
             bass: 0.04 + Math.sin(this.time * 0.3) * 0.02,
             mid: 0.03 + Math.sin(this.time * 0.4) * 0.02,
             treble: 0.02 + Math.sin(this.time * 0.6) * 0.01,
-            frequencies: new Array(64).fill(0).map((_, i) => 
-                0.03 + Math.sin(this.time + i * 0.05) * 0.02
-            )
-        };
-
-        this.update(idleData);
+            frequencies: new Array(64).fill(0).map((_, i) => 0.03 + Math.sin(this.time + i * 0.05) * 0.02)
+        });
     }
 
     destroy() {
         window.removeEventListener('resize', () => this.onResize());
-
-        // Cleanup
-        [this.centerGroup, this.surroundGroup].forEach(group => {
-            if (group) {
-                group.traverse(child => {
-                    if (child.geometry) child.geometry.dispose();
-                    if (child.material) {
-                        if (Array.isArray(child.material)) {
-                            child.material.forEach(m => m.dispose());
-                        } else {
-                            child.material.dispose();
-                        }
-                    }
-                });
-            }
-        });
-
-        if (this.particles) {
-            this.particles.geometry.dispose();
-            this.particles.material.dispose();
-        }
-
-        if (this.renderer) {
-            this.renderer.dispose();
-            this.container.removeChild(this.renderer.domElement);
-        }
+        [this.centerGroup, this.ringsGroup, this.surroundGroup, this.backgroundGroup, this.particlesGroup].forEach(g => this.clearGroup(g));
+        if (this.renderer) { this.renderer.dispose(); this.container.removeChild(this.renderer.domElement); }
     }
 }
