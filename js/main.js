@@ -49,7 +49,6 @@ class Auralux {
                 const info = await this.audioAnalyzer.connectAudioFile(file);
                 this.ui.setMicrophoneActive(false);
                 this.ui.showAudioPlayer(info);
-
                 const audio = this.audioAnalyzer.getAudioElement();
                 if (audio) {
                     audio.addEventListener('play', () => this.ui.setPlayingState(true));
@@ -65,16 +64,34 @@ class Auralux {
         this.ui.on('onPlayPause', () => this.ui.setPlayingState(this.audioAnalyzer.togglePlayPause()));
         this.ui.on('onSeek', (pos) => this.audioAnalyzer.seek(pos));
 
-        // Visualizer
-        this.ui.on('onGeometryChange', (type) => this.visualizer.setGeometry(type));
-        this.ui.on('onDetailChange', (level) => this.visualizer.setDetail(level));
-        this.ui.on('onRingsStyleChange', (style) => this.visualizer.setRingsStyle(style));
-        this.ui.on('onRingsCountChange', (count) => this.visualizer.setRingsCount(count));
-        this.ui.on('onSurroundTypeChange', (type) => this.visualizer.setSurroundType(type));
-        this.ui.on('onSurroundCountChange', (count) => this.visualizer.setSurroundCount(count));
-        this.ui.on('onBackgroundTypeChange', (type) => this.visualizer.setBackgroundType(type));
-        this.ui.on('onBackgroundDensityChange', (density) => this.visualizer.setBackgroundDensity(density));
+        // Geometry
+        this.ui.on('onGeometryChange', (v) => this.visualizer.setGeometry(v));
+        this.ui.on('onDetailChange', (v) => this.visualizer.setDetail(v));
 
+        // Rings
+        this.ui.on('onRingsStyleChange', (v) => this.visualizer.setRingsStyle(v));
+        this.ui.on('onRingsCountChange', (v) => this.visualizer.setRingsCount(v));
+
+        // Surround
+        this.ui.on('onSurroundTypeChange', (v) => this.visualizer.setSurroundType(v));
+        this.ui.on('onSurroundCountChange', (v) => this.visualizer.setSurroundCount(v));
+
+        // Background
+        this.ui.on('onBackgroundTypeChange', (v) => this.visualizer.setBackgroundType(v));
+        this.ui.on('onBackgroundDensityChange', (v) => this.visualizer.setBackgroundDensity(v));
+        this.ui.on('onBackgroundSpeedChange', (v) => this.visualizer.setBackgroundSpeed(v));
+
+        // Lighting
+        this.ui.on('onLightModeChange', (v) => this.visualizer.setLightMode(v));
+        this.ui.on('onBrightnessChange', (v) => this.visualizer.setBrightness(v));
+        this.ui.on('onLightComplexityChange', (v) => this.visualizer.setLightComplexity(v));
+
+        // Scene
+        this.ui.on('onDepthChange', (v) => this.visualizer.setDepth(v));
+        this.ui.on('onBloomChange', (v) => this.visualizer.setBloom(v));
+        this.ui.on('onFogChange', (v) => this.visualizer.setFog(v));
+
+        // Randomize
         this.ui.on('onRandomize', () => {
             const r = this.visualizer.randomize();
             this.ui.setGeometrySelect(r.geometry);
@@ -82,6 +99,7 @@ class Auralux {
             this.ui.setRingsSelect(r.rings);
             this.ui.setSurroundSelect(r.surround);
             this.ui.setBackgroundSelect(r.background);
+            this.ui.setLightModeSelect(r.lightMode);
         });
     }
 
@@ -91,7 +109,6 @@ class Auralux {
     loop() {
         if (!this.isRunning) return;
         this.animationId = requestAnimationFrame(() => this.loop());
-        
         if (this.audioAnalyzer.sourceType) {
             this.visualizer.update(this.audioAnalyzer.analyze());
         } else {

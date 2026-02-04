@@ -66,36 +66,32 @@
 
         <div class="ui-divider"></div>
 
-        <!-- Center Shape -->
+        <!-- GEOMETRY -->
+        <div class="ui-section-header">Geometry</div>
+        
         <div class="ui-section column">
             <span class="ui-label">Center Shape</span>
             <select id="select-geometry" class="ui-select">
-                <optgroup label="Platonic Solids">
+                <optgroup label="Platonic">
                     <option value="tetrahedron">Tetrahedron</option>
-                    <option value="hexahedron">Hexahedron (Cube)</option>
+                    <option value="hexahedron">Cube</option>
                     <option value="octahedron">Octahedron</option>
                     <option value="dodecahedron">Dodecahedron</option>
                     <option value="icosahedron" selected>Icosahedron</option>
                 </optgroup>
-                <optgroup label="Complex Polyhedra">
-                    <option value="stellatedOcta">Stellated Octahedron</option>
-                    <option value="truncatedIcosa">Truncated Icosahedron</option>
-                    <option value="snubCube">Snub Cube</option>
-                </optgroup>
-                <optgroup label="Paradox Shapes">
+                <optgroup label="Complex">
+                    <option value="stellatedOcta">Stellated Octa</option>
+                    <option value="torusKnot">Torus Knot</option>
                     <option value="kleinBottle">Klein Bottle</option>
                     <option value="mobiusStrip">Möbius Strip</option>
-                    <option value="hyperCube">Hypercube (4D)</option>
-                    <option value="torusKnot">Torus Knot</option>
                 </optgroup>
-                <optgroup label="Fractal-like">
-                    <option value="sierpinski">Sierpinski Tetrahedron</option>
-                    <option value="geodesic">Geodesic Sphere</option>
+                <optgroup label="Fractal">
+                    <option value="sierpinski">Sierpinski</option>
+                    <option value="geodesic">Geodesic</option>
                 </optgroup>
             </select>
         </div>
 
-        <!-- Detail -->
         <div class="ui-section column">
             <div class="ui-row">
                 <span class="ui-label">Detail</span>
@@ -106,24 +102,25 @@
 
         <div class="ui-divider"></div>
 
-        <!-- Rings -->
+        <!-- RINGS -->
+        <div class="ui-section-header">Rings</div>
+
         <div class="ui-section column">
-            <span class="ui-label">Rings Style</span>
+            <span class="ui-label">Style</span>
             <select id="select-rings" class="ui-select">
-                <option value="orbital">Orbital Rings</option>
-                <option value="saturn">Saturn Rings</option>
+                <option value="orbital">Orbital</option>
+                <option value="saturn">Saturn</option>
                 <option value="gyroscope">Gyroscope</option>
-                <option value="atomic">Atomic Orbits</option>
-                <option value="spiral">Spiral Rings</option>
-                <option value="cage">Wireframe Cage</option>
+                <option value="atomic">Atomic</option>
+                <option value="spiral">Spiral</option>
+                <option value="cage">Cage</option>
                 <option value="none">None</option>
             </select>
         </div>
 
-        <!-- Rings Count -->
         <div class="ui-section column">
             <div class="ui-row">
-                <span class="ui-label">Rings Count</span>
+                <span class="ui-label">Count</span>
                 <span id="rings-count-value" class="ui-value">4</span>
             </div>
             <input type="range" id="range-rings-count" class="ui-range" min="1" max="8" step="1" value="4">
@@ -131,19 +128,20 @@
 
         <div class="ui-divider"></div>
 
-        <!-- Surround -->
+        <!-- SURROUND -->
+        <div class="ui-section-header">Surround</div>
+
         <div class="ui-section column">
-            <span class="ui-label">Surround Elements</span>
+            <span class="ui-label">Type</span>
             <select id="select-surround" class="ui-select">
-                <option value="floatingPolyhedra">Floating Polyhedra</option>
-                <option value="particles">Particle Field</option>
+                <option value="floatingPolyhedra">Polyhedra</option>
+                <option value="particles">Particles</option>
                 <option value="asteroids">Asteroids</option>
                 <option value="crystals">Crystals</option>
                 <option value="none">None</option>
             </select>
         </div>
 
-        <!-- Surround Count -->
         <div class="ui-section column">
             <div class="ui-row">
                 <span class="ui-label">Count</span>
@@ -154,26 +152,96 @@
 
         <div class="ui-divider"></div>
 
-        <!-- Background -->
+        <!-- BACKGROUND -->
+        <div class="ui-section-header">Background</div>
+
         <div class="ui-section column">
-            <span class="ui-label">Background Objects</span>
+            <span class="ui-label">Objects</span>
             <select id="select-background" class="ui-select">
                 <option value="flyingDebris">Flying Debris</option>
                 <option value="starfield">Starfield</option>
                 <option value="meteors">Meteors</option>
-                <option value="nebula">Nebula Particles</option>
-                <option value="grid">Grid Plane</option>
+                <option value="nebula">Nebula</option>
+                <option value="grid">Grid</option>
                 <option value="none">None</option>
             </select>
         </div>
 
-        <!-- Background Density -->
         <div class="ui-section column">
             <div class="ui-row">
                 <span class="ui-label">Density</span>
                 <span id="bg-density-value" class="ui-value">50</span>
             </div>
             <input type="range" id="range-bg-density" class="ui-range" min="10" max="150" step="10" value="50">
+        </div>
+
+        <div class="ui-section column">
+            <div class="ui-row">
+                <span class="ui-label">Speed</span>
+                <span id="bg-speed-value" class="ui-value">1.0</span>
+            </div>
+            <input type="range" id="range-bg-speed" class="ui-range" min="0.1" max="3" step="0.1" value="1">
+        </div>
+
+        <div class="ui-divider"></div>
+
+        <!-- LIGHTING -->
+        <div class="ui-section-header">Lighting</div>
+
+        <div class="ui-section column">
+            <span class="ui-label">Mode</span>
+            <select id="select-light-mode" class="ui-select">
+                <option value="dynamic">Dynamic</option>
+                <option value="static">Static</option>
+                <option value="pulse">Pulse</option>
+                <option value="strobe">Strobe</option>
+                <option value="rainbow">Rainbow</option>
+            </select>
+        </div>
+
+        <div class="ui-section column">
+            <div class="ui-row">
+                <span class="ui-label">Brightness</span>
+                <span id="brightness-value" class="ui-value">1.0</span>
+            </div>
+            <input type="range" id="range-brightness" class="ui-range" min="0.2" max="3" step="0.1" value="1">
+        </div>
+
+        <div class="ui-section column">
+            <div class="ui-row">
+                <span class="ui-label">Complexity</span>
+                <span id="light-complexity-value" class="ui-value">3</span>
+            </div>
+            <input type="range" id="range-light-complexity" class="ui-range" min="1" max="5" step="1" value="3">
+        </div>
+
+        <div class="ui-divider"></div>
+
+        <!-- SCENE -->
+        <div class="ui-section-header">Scene</div>
+
+        <div class="ui-section column">
+            <div class="ui-row">
+                <span class="ui-label">Depth</span>
+                <span id="depth-value" class="ui-value">1.0</span>
+            </div>
+            <input type="range" id="range-depth" class="ui-range" min="0.3" max="2" step="0.1" value="1">
+        </div>
+
+        <div class="ui-section column">
+            <div class="ui-row">
+                <span class="ui-label">Bloom</span>
+                <span id="bloom-value" class="ui-value">1.0</span>
+            </div>
+            <input type="range" id="range-bloom" class="ui-range" min="0" max="2.5" step="0.1" value="1">
+        </div>
+
+        <div class="ui-section column">
+            <div class="ui-row">
+                <span class="ui-label">Fog</span>
+                <span id="fog-value" class="ui-value">1.0</span>
+            </div>
+            <input type="range" id="range-fog" class="ui-range" min="0" max="2" step="0.1" value="1">
         </div>
 
         <div class="ui-divider"></div>
