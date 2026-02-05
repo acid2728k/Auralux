@@ -1,11 +1,12 @@
 /**
- * Visualizer Module - Extended Controls
+ * Visualizer Module — Core geometry only (background handled by BackgroundSystem)
  */
 
 import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { BackgroundSystem } from './background-system.js';
 
 export class Visualizer {
     constructor(container) {
@@ -16,8 +17,6 @@ export class Visualizer {
         this.centerGroup = null;
         this.ringsGroup = null;
         this.surroundGroup = null;
-        this.backgroundGroup = null;
-        this.particlesGroup = null;
         
         // Settings
         this.settings = {
@@ -27,15 +26,8 @@ export class Visualizer {
             ringsCount: 4,
             surroundType: 'floatingPolyhedra',
             surroundCount: 20,
-            backgroundType: 'flyingDebris',
-            backgroundDensity: 50,
-            backgroundSpeed: 1,
-            lightMode: 'dynamic',
-            brightness: 1,
-            lightComplexity: 3,
-            depth: 1,
-            bloom: 1,
-            fog: 1
+            bloom: 1.0,
+            fog: 1.0
         };
         
         this.baseScale = 4;
@@ -48,8 +40,9 @@ export class Visualizer {
         
         this.time = 0;
         this.smoothedAudio = { amplitude: 0, bass: 0, mid: 0, treble: 0 };
-        this.flyingObjects = [];
-        this.lights = [];
+        
+        // Background system (external)
+        this.backgroundSystem = null;
         
         this.init();
     }
@@ -68,28 +61,25 @@ export class Visualizer {
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.renderer.toneMappingExposure = 1.5;
+        this.renderer.autoClear = false;
         this.container.appendChild(this.renderer.domElement);
 
         this.setupPostProcessing();
-        this.setupLights();
+
+        // Initialize background system
+        this.backgroundSystem = new BackgroundSystem(this.scene, this.camera);
 
         this.centerGroup = new THREE.Group();
         this.ringsGroup = new THREE.Group();
         this.surroundGroup = new THREE.Group();
-        this.backgroundGroup = new THREE.Group();
-        this.particlesGroup = new THREE.Group();
         
         this.scene.add(this.centerGroup);
         this.scene.add(this.ringsGroup);
         this.scene.add(this.surroundGroup);
-        this.scene.add(this.backgroundGroup);
-        this.scene.add(this.particlesGroup);
 
         this.createCenterGeometry();
         this.createRings();
         this.createSurroundElements();
-        this.createBackgroundElements();
-        this.createDeepParticles();
 
         window.addEventListener('resize', () => this.onResize());
     }
@@ -99,74 +89,14 @@ export class Visualizer {
         this.composer.addPass(new RenderPass(this.scene, this.camera));
         this.bloomPass = new UnrealBloomPass(
             new THREE.Vector2(window.innerWidth, window.innerHeight),
-            1.0 * this.settings.bloom, 0.5, 0.1
+            this.settings.bloom, 0.5, 0.1
         );
         this.composer.addPass(this.bloomPass);
     }
 
-    setupLights() {
-        // Clear existing lights
-        this.lights.forEach(l => this.scene.remove(l));
-        this.lights = [];
-
-        const brightness = this.settings.brightness;
-        const complexity = this.settings.lightComplexity;
-
-        // Ambient
-        const ambient = new THREE.AmbientLight(0x111122, 0.3 * brightness);
-        this.scene.add(ambient);
-        this.lights.push(ambient);
-
-        // Main light
-        this.mainLight = new THREE.PointLight(this.colors.primary, 3 * brightness, 80);
-        this.mainLight.position.set(0, 0, 25);
-        this.scene.add(this.mainLight);
-        this.lights.push(this.mainLight);
-
-        // Additional lights based on complexity
-        if (complexity >= 2) {
-            this.accentLight = new THREE.PointLight(this.colors.secondary, 2 * brightness, 60);
-            this.accentLight.position.set(-20, 15, 10);
-            this.scene.add(this.accentLight);
-            this.lights.push(this.accentLight);
-        }
-
-        if (complexity >= 3) {
-            this.backLight = new THREE.PointLight(this.colors.tertiary, 1.5 * brightness, 60);
-            this.backLight.position.set(15, -10, -20);
-            this.scene.add(this.backLight);
-            this.lights.push(this.backLight);
-        }
-
-        if (complexity >= 4) {
-            this.rimLight = new THREE.PointLight(0xffffff, 0.8 * brightness, 50);
-            this.rimLight.position.set(0, 25, -15);
-            this.scene.add(this.rimLight);
-            this.lights.push(this.rimLight);
-        }
-
-        if (complexity >= 5) {
-            this.bottomLight = new THREE.PointLight(this.colors.primary, 1 * brightness, 40);
-            this.bottomLight.position.set(0, -20, 10);
-            this.scene.add(this.bottomLight);
-            this.lights.push(this.bottomLight);
-        }
-    }
-
     updateFog() {
-        const fogDensity = 0.008 * this.settings.fog;
-        this.scene.fog = new THREE.FogExp2(0x000005, fogDensity);
-    }
-
-    updateBloom() {
-        this.bloomPass.strength = this.settings.bloom;
-    }
-
-    updateDepth() {
-        const d = this.settings.depth;
-        this.camera.position.z = 30 / d;
-        this.camera.fov = 70 * d;
-        this.camera.updateProjectionMatrix();
+        const density = 0.006 * this.settings.fog;
+        this.scene.fog = new THREE.FogExp2(0x000005, density);
     }
 
     // =====================================================
@@ -273,7 +203,7 @@ export class Visualizer {
     }
 
     // =====================================================
-    // RINGS, SURROUND, BACKGROUND (same as before, abbreviated)
+    // RINGS
     // =====================================================
 
     createRings() {
@@ -328,6 +258,10 @@ export class Visualizer {
         }
     }
 
+    // =====================================================
+    // SURROUND
+    // =====================================================
+
     createSurroundElements() {
         this.clearGroup(this.surroundGroup);
         const { surroundType, surroundCount } = this.settings;
@@ -367,155 +301,6 @@ export class Visualizer {
         }
     }
 
-    createBackgroundElements() {
-        this.clearGroup(this.backgroundGroup);
-        this.flyingObjects = [];
-        const { backgroundType, backgroundDensity } = this.settings;
-        if (backgroundType === 'none') return;
-
-        switch (backgroundType) {
-            case 'flyingDebris':
-                this.createFlyingDebris(backgroundDensity);
-                break;
-            case 'starfield':
-                this.createStarfield(backgroundDensity * 5);
-                break;
-            case 'meteors':
-                this.createMeteors(Math.floor(backgroundDensity / 3));
-                break;
-            case 'nebula':
-                this.createNebula(backgroundDensity * 3);
-                break;
-            case 'grid':
-                this.createGrid();
-                break;
-        }
-    }
-
-    createFlyingDebris(count) {
-        const geomTypes = [
-            () => new THREE.TetrahedronGeometry(0.5 + Math.random() * 0.5, 0),
-            () => new THREE.OctahedronGeometry(0.4 + Math.random() * 0.4, 0),
-            () => new THREE.BoxGeometry(0.4, 0.6, 0.3),
-            () => new THREE.DodecahedronGeometry(0.3, 0)
-        ];
-
-        for (let i = 0; i < count; i++) {
-            const geom = geomTypes[Math.floor(Math.random() * geomTypes.length)]();
-            const mat = new THREE.MeshPhongMaterial({
-                color: Math.random() > 0.5 ? 0x333333 : this.getGradientColor(Math.random()).getHex(),
-                flatShading: true, transparent: true, opacity: 0.8
-            });
-            const debris = new THREE.Mesh(geom, mat);
-            
-            const x = (Math.random() - 0.5) * 200;
-            const y = (Math.random() - 0.5) * 100;
-            const z = -50 - Math.random() * 150;
-            debris.position.set(x, y, z);
-            debris.rotation.set(Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2);
-            
-            debris.userData = {
-                type: 'debris',
-                velocity: new THREE.Vector3((Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.3, 2 + Math.random() * 3),
-                rotVel: new THREE.Vector3((Math.random() - 0.5) * 0.02, (Math.random() - 0.5) * 0.02, (Math.random() - 0.5) * 0.02),
-                startZ: z
-            };
-            
-            this.flyingObjects.push(debris);
-            this.backgroundGroup.add(debris);
-        }
-    }
-
-    createStarfield(count) {
-        const positions = new Float32Array(count * 3);
-        for (let i = 0; i < count; i++) {
-            positions[i * 3] = (Math.random() - 0.5) * 300;
-            positions[i * 3 + 1] = (Math.random() - 0.5) * 200;
-            positions[i * 3 + 2] = -20 - Math.random() * 200;
-        }
-        const geom = new THREE.BufferGeometry();
-        geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        geom.userData.originalPositions = positions.slice();
-        const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.1, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending });
-        const stars = new THREE.Points(geom, mat);
-        stars.userData = { type: 'starfield' };
-        this.backgroundGroup.add(stars);
-    }
-
-    createMeteors(count) {
-        for (let i = 0; i < count; i++) {
-            const head = new THREE.Mesh(
-                new THREE.SphereGeometry(0.3 + Math.random() * 0.3, 8, 8),
-                new THREE.MeshBasicMaterial({ color: this.getGradientColor(Math.random()) })
-            );
-            const trail = new THREE.Mesh(
-                new THREE.ConeGeometry(0.3, 3 + Math.random() * 4, 8),
-                new THREE.MeshBasicMaterial({ color: this.colors.secondary, transparent: true, opacity: 0.4 })
-            );
-            trail.rotation.x = Math.PI / 2;
-            trail.position.z = 2;
-
-            const meteor = new THREE.Group();
-            meteor.add(head);
-            meteor.add(trail);
-            meteor.position.set((Math.random() - 0.5) * 150, 30 + Math.random() * 50, -100 - Math.random() * 100);
-            meteor.rotation.x = -0.5;
-            meteor.userData = {
-                type: 'meteor',
-                velocity: new THREE.Vector3((Math.random() - 0.5) * 2, -3 - Math.random() * 3, 5 + Math.random() * 5),
-                startPos: meteor.position.clone()
-            };
-            this.flyingObjects.push(meteor);
-            this.backgroundGroup.add(meteor);
-        }
-    }
-
-    createNebula(count) {
-        const positions = new Float32Array(count * 3);
-        const colors = new Float32Array(count * 3);
-        for (let i = 0; i < count; i++) {
-            const r = 30 + Math.random() * 100;
-            const theta = Math.random() * Math.PI * 2;
-            positions[i * 3] = r * Math.cos(theta);
-            positions[i * 3 + 1] = (Math.random() - 0.5) * 60;
-            positions[i * 3 + 2] = -30 - r * 0.5;
-            const c = this.getGradientColor(Math.random());
-            colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
-        }
-        const geom = new THREE.BufferGeometry();
-        geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-        geom.userData.originalPositions = positions.slice();
-        const mat = new THREE.PointsMaterial({ size: 0.5, vertexColors: true, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending });
-        const nebula = new THREE.Points(geom, mat);
-        nebula.userData = { type: 'nebula' };
-        this.backgroundGroup.add(nebula);
-    }
-
-    createGrid() {
-        const grid = new THREE.GridHelper(200, 50, 0x333333, 0x222222);
-        grid.position.y = -20;
-        this.backgroundGroup.add(grid);
-    }
-
-    createDeepParticles() {
-        this.clearGroup(this.particlesGroup);
-        const count = 800;
-        const positions = new Float32Array(count * 3);
-        for (let i = 0; i < count; i++) {
-            positions[i * 3] = (Math.random() - 0.5) * 300;
-            positions[i * 3 + 1] = (Math.random() - 0.5) * 200;
-            positions[i * 3 + 2] = -Math.random() * 300;
-        }
-        const geom = new THREE.BufferGeometry();
-        geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        geom.userData.originalPositions = positions.slice();
-        const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.05, transparent: true, opacity: 0.4 });
-        const particles = new THREE.Points(geom, mat);
-        particles.userData = { type: 'deepParticles' };
-        this.particlesGroup.add(particles);
-    }
-
     // =====================================================
     // HELPERS
     // =====================================================
@@ -553,6 +338,7 @@ export class Visualizer {
         const delta = this.clock.getDelta();
         this.time += delta;
 
+        // Smooth audio
         const s = 0.12;
         this.smoothedAudio.amplitude += (audioData.amplitude - this.smoothedAudio.amplitude) * s;
         this.smoothedAudio.bass += (audioData.bass - this.smoothedAudio.bass) * s;
@@ -561,14 +347,27 @@ export class Visualizer {
 
         const { amplitude, bass, mid, treble } = this.smoothedAudio;
 
+        // Update center geometry
         this.updateCenter(amplitude, bass, mid, delta);
         this.updateRings(amplitude, delta);
         this.updateSurround(amplitude, delta);
-        this.updateBackground(delta);
-        this.updateLights(amplitude, bass, treble, delta);
         this.updateCamera();
 
-        this.bloomPass.strength = (0.5 + amplitude * 1.0) * this.settings.bloom;
+        // Update background system
+        if (this.backgroundSystem) {
+            this.backgroundSystem.update(delta, { amplitude, bass, mid, treble });
+        }
+
+        // Render
+        this.renderer.clear();
+        
+        // Render background quad first
+        if (this.backgroundSystem) {
+            this.backgroundSystem.renderBackground(this.renderer);
+        }
+        
+        // Render main scene with bloom
+        this.bloomPass.strength = (0.5 + amplitude * 0.8) * this.settings.bloom;
         this.composer.render();
     }
 
@@ -600,96 +399,6 @@ export class Visualizer {
         });
     }
 
-    updateBackground(delta) {
-        const speed = this.settings.backgroundSpeed;
-        
-        this.flyingObjects.forEach(obj => {
-            const d = obj.userData;
-            if (d.type === 'debris') {
-                obj.position.add(d.velocity.clone().multiplyScalar(delta * 10 * speed));
-                obj.rotation.x += d.rotVel.x * speed;
-                obj.rotation.y += d.rotVel.y * speed;
-                obj.rotation.z += d.rotVel.z * speed;
-                if (obj.position.z > 50) {
-                    obj.position.z = d.startZ;
-                    obj.position.x = (Math.random() - 0.5) * 200;
-                    obj.position.y = (Math.random() - 0.5) * 100;
-                }
-            } else if (d.type === 'meteor') {
-                obj.position.add(d.velocity.clone().multiplyScalar(delta * 10 * speed));
-                if (obj.position.z > 50 || obj.position.y < -80) {
-                    obj.position.copy(d.startPos);
-                    obj.position.x = (Math.random() - 0.5) * 150;
-                }
-            }
-        });
-
-        this.backgroundGroup.children.forEach(child => {
-            const d = child.userData;
-            if ((d.type === 'starfield' || d.type === 'nebula') && child.geometry.userData.originalPositions) {
-                const pos = child.geometry.attributes.position.array;
-                const orig = child.geometry.userData.originalPositions;
-                for (let i = 0; i < pos.length / 3; i++) {
-                    pos[i * 3 + 2] = orig[i * 3 + 2] + Math.sin(this.time * 0.3 * speed + i * 0.01) * 2;
-                }
-                child.geometry.attributes.position.needsUpdate = true;
-            }
-        });
-
-        this.particlesGroup.children.forEach(child => {
-            if (child.userData.type === 'deepParticles') {
-                const pos = child.geometry.attributes.position.array;
-                const orig = child.geometry.userData.originalPositions;
-                for (let i = 0; i < pos.length / 3; i++) {
-                    pos[i * 3] = orig[i * 3] + Math.sin(this.time * 0.1 * speed + i * 0.01) * 2;
-                    pos[i * 3 + 1] = orig[i * 3 + 1] + Math.cos(this.time * 0.08 * speed + i * 0.01) * 2;
-                }
-                child.geometry.attributes.position.needsUpdate = true;
-                child.rotation.y += delta * 0.005 * speed;
-            }
-        });
-    }
-
-    updateLights(amplitude, bass, treble, delta) {
-        const mode = this.settings.lightMode;
-        const brightness = this.settings.brightness;
-
-        switch (mode) {
-            case 'dynamic':
-                if (this.mainLight) this.mainLight.intensity = (2 + amplitude * 3) * brightness;
-                if (this.accentLight) {
-                    this.accentLight.intensity = (1 + bass * 2) * brightness;
-                    this.accentLight.position.x = Math.sin(this.time * 0.3) * 20;
-                    this.accentLight.position.y = Math.cos(this.time * 0.2) * 15;
-                }
-                if (this.backLight) this.backLight.intensity = (1 + treble * 2) * brightness;
-                break;
-            case 'static':
-                if (this.mainLight) this.mainLight.intensity = 3 * brightness;
-                if (this.accentLight) this.accentLight.intensity = 2 * brightness;
-                if (this.backLight) this.backLight.intensity = 1.5 * brightness;
-                break;
-            case 'pulse':
-                const pulse = Math.sin(this.time * 3) * 0.5 + 0.5;
-                if (this.mainLight) this.mainLight.intensity = (1 + pulse * 3 + amplitude * 2) * brightness;
-                if (this.accentLight) this.accentLight.intensity = (pulse * 2) * brightness;
-                break;
-            case 'strobe':
-                const strobe = Math.sin(this.time * 15) > 0.7 ? 1 : 0.2;
-                if (this.mainLight) this.mainLight.intensity = (strobe * 4 * (1 + amplitude)) * brightness;
-                break;
-            case 'rainbow':
-                const hue = (this.time * 0.1) % 1;
-                if (this.mainLight) {
-                    this.mainLight.color.setHSL(hue, 0.8, 0.6);
-                    this.mainLight.intensity = (2 + amplitude * 2) * brightness;
-                }
-                if (this.accentLight) this.accentLight.color.setHSL((hue + 0.33) % 1, 0.8, 0.6);
-                if (this.backLight) this.backLight.color.setHSL((hue + 0.66) % 1, 0.8, 0.6);
-                break;
-        }
-    }
-
     updateCamera() {
         this.camera.position.x = Math.sin(this.time * 0.05) * 5;
         this.camera.position.y = Math.cos(this.time * 0.07) * 3;
@@ -697,7 +406,7 @@ export class Visualizer {
     }
 
     // =====================================================
-    // API
+    // PUBLIC API — Core geometry
     // =====================================================
 
     setGeometry(type) { this.settings.geometry = type; this.createCenterGeometry(); }
@@ -706,47 +415,65 @@ export class Visualizer {
     setRingsCount(count) { this.settings.ringsCount = count; this.createRings(); }
     setSurroundType(type) { this.settings.surroundType = type; this.createSurroundElements(); }
     setSurroundCount(count) { this.settings.surroundCount = count; this.createSurroundElements(); }
-    setBackgroundType(type) { this.settings.backgroundType = type; this.createBackgroundElements(); }
-    setBackgroundDensity(density) { this.settings.backgroundDensity = density; this.createBackgroundElements(); }
-    setBackgroundSpeed(speed) { this.settings.backgroundSpeed = speed; }
-    setLightMode(mode) { this.settings.lightMode = mode; }
-    setBrightness(val) { this.settings.brightness = val; this.setupLights(); }
-    setLightComplexity(val) { this.settings.lightComplexity = val; this.setupLights(); }
-    setDepth(val) { this.settings.depth = val; this.updateDepth(); }
-    setBloom(val) { this.settings.bloom = val; this.updateBloom(); }
+    setBloom(val) { this.settings.bloom = val; }
     setFog(val) { this.settings.fog = val; this.updateFog(); }
+
+    // =====================================================
+    // PUBLIC API — Background system passthrough
+    // =====================================================
+
+    setBgPreset(val) { this.backgroundSystem?.setPreset(val); }
+    setBgBrightness(val) { this.backgroundSystem?.setBrightness(val); }
+    setBgComplexity(val) { this.backgroundSystem?.setComplexity(val); }
+    setBgDepth(val) { this.backgroundSystem?.setDepth(val); }
+    setBgDynamics(val) { this.backgroundSystem?.setDynamics(val); }
+    setBgTwinkle(val) { this.backgroundSystem?.setTwinkle(val); }
+    setBgParallax(val) { this.backgroundSystem?.setParallax(val); }
+    setBgAudioSync(val) { this.backgroundSystem?.setAudioSync(val); }
+    setAmbientIntensity(val) { this.backgroundSystem?.setAmbientIntensity(val); }
+    setBacklightIntensity(val) { this.backgroundSystem?.setBacklightIntensity(val); }
+    setBacklightColor(val) { this.backgroundSystem?.setBacklightColor(val); }
+    setLightReactsToAudio(val) { this.backgroundSystem?.setLightReactsToAudio(val); }
+
+    // =====================================================
+    // RANDOMIZE & IDLE
+    // =====================================================
 
     randomize() {
         const geoms = ['icosahedron', 'octahedron', 'dodecahedron', 'torusKnot', 'kleinBottle', 'geodesic'];
         const rings = ['orbital', 'saturn', 'gyroscope', 'atomic', 'spiral'];
         const surrounds = ['floatingPolyhedra', 'particles', 'asteroids', 'crystals'];
-        const bgs = ['flyingDebris', 'starfield', 'meteors', 'nebula'];
-        const lightModes = ['dynamic', 'pulse', 'rainbow'];
+        const presets = ['void', 'nebula', 'dust', 'drift', 'prism'];
 
         const r = {
             geometry: geoms[Math.floor(Math.random() * geoms.length)],
             detail: Math.floor(Math.random() * 4) + 2,
             rings: rings[Math.floor(Math.random() * rings.length)],
             surround: surrounds[Math.floor(Math.random() * surrounds.length)],
-            background: bgs[Math.floor(Math.random() * bgs.length)],
-            lightMode: lightModes[Math.floor(Math.random() * lightModes.length)]
+            bgPreset: presets[Math.floor(Math.random() * presets.length)]
         };
 
+        // Random colors for center
         const h1 = Math.random(), h2 = (h1 + 0.3 + Math.random() * 0.3) % 1, h3 = (h2 + 0.2) % 1;
         this.colors.primary.setHSL(h1, 0.8, 0.6);
         this.colors.secondary.setHSL(h2, 0.9, 0.55);
         this.colors.tertiary.setHSL(h3, 0.7, 0.5);
 
         Object.assign(this.settings, {
-            geometry: r.geometry, detail: r.detail, ringsStyle: r.rings,
-            surroundType: r.surround, backgroundType: r.background, lightMode: r.lightMode
+            geometry: r.geometry,
+            detail: r.detail,
+            ringsStyle: r.rings,
+            surroundType: r.surround
         });
 
         this.createCenterGeometry();
         this.createRings();
         this.createSurroundElements();
-        this.createBackgroundElements();
-        this.setupLights();
+        
+        // Randomize background
+        if (this.backgroundSystem) {
+            this.backgroundSystem.setPreset(r.bgPreset);
+        }
 
         return r;
     }
@@ -765,8 +492,8 @@ export class Visualizer {
 
     destroy() {
         window.removeEventListener('resize', () => this.onResize());
-        [this.centerGroup, this.ringsGroup, this.surroundGroup, this.backgroundGroup, this.particlesGroup].forEach(g => this.clearGroup(g));
-        this.lights.forEach(l => this.scene.remove(l));
+        [this.centerGroup, this.ringsGroup, this.surroundGroup].forEach(g => this.clearGroup(g));
+        if (this.backgroundSystem) this.backgroundSystem.dispose();
         if (this.renderer) { this.renderer.dispose(); this.container.removeChild(this.renderer.domElement); }
     }
 }

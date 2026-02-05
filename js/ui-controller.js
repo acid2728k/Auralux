@@ -1,5 +1,5 @@
 /**
- * UIController Module - Extended
+ * UIController Module — Extended with Background & Lighting controls
  */
 
 export class UIController {
@@ -16,32 +16,46 @@ export class UIController {
             progressBar: document.querySelector('.progress-bar'),
             progressFill: document.getElementById('progress-fill'),
             
+            // Geometry
             selectGeometry: document.getElementById('select-geometry'),
             rangeDetail: document.getElementById('range-detail'),
             detailValue: document.getElementById('detail-value'),
             
+            // Rings
             selectRings: document.getElementById('select-rings'),
             rangeRingsCount: document.getElementById('range-rings-count'),
             ringsCountValue: document.getElementById('rings-count-value'),
             
+            // Surround
             selectSurround: document.getElementById('select-surround'),
             rangeSurroundCount: document.getElementById('range-surround-count'),
             surroundCountValue: document.getElementById('surround-count-value'),
             
-            selectBackground: document.getElementById('select-background'),
-            rangeBgDensity: document.getElementById('range-bg-density'),
-            bgDensityValue: document.getElementById('bg-density-value'),
-            rangeBgSpeed: document.getElementById('range-bg-speed'),
-            bgSpeedValue: document.getElementById('bg-speed-value'),
+            // Background
+            selectBgPreset: document.getElementById('select-bg-preset'),
+            rangeBgBrightness: document.getElementById('range-bg-brightness'),
+            bgBrightnessValue: document.getElementById('bg-brightness-value'),
+            rangeBgComplexity: document.getElementById('range-bg-complexity'),
+            bgComplexityValue: document.getElementById('bg-complexity-value'),
+            rangeBgDepth: document.getElementById('range-bg-depth'),
+            bgDepthValue: document.getElementById('bg-depth-value'),
+            rangeBgDynamics: document.getElementById('range-bg-dynamics'),
+            bgDynamicsValue: document.getElementById('bg-dynamics-value'),
+            rangeBgTwinkle: document.getElementById('range-bg-twinkle'),
+            bgTwinkleValue: document.getElementById('bg-twinkle-value'),
+            rangeBgParallax: document.getElementById('range-bg-parallax'),
+            bgParallaxValue: document.getElementById('bg-parallax-value'),
+            toggleAudioSync: document.getElementById('toggle-audio-sync'),
             
-            selectLightMode: document.getElementById('select-light-mode'),
-            rangeBrightness: document.getElementById('range-brightness'),
-            brightnessValue: document.getElementById('brightness-value'),
-            rangeLightComplexity: document.getElementById('range-light-complexity'),
-            lightComplexityValue: document.getElementById('light-complexity-value'),
+            // Lighting
+            rangeAmbient: document.getElementById('range-ambient'),
+            ambientValue: document.getElementById('ambient-value'),
+            rangeBacklight: document.getElementById('range-backlight'),
+            backlightValue: document.getElementById('backlight-value'),
+            colorBacklight: document.getElementById('color-backlight'),
+            toggleLightAudio: document.getElementById('toggle-light-audio'),
             
-            rangeDepth: document.getElementById('range-depth'),
-            depthValue: document.getElementById('depth-value'),
+            // Scene
             rangeBloom: document.getElementById('range-bloom'),
             bloomValue: document.getElementById('bloom-value'),
             rangeFog: document.getElementById('range-fog'),
@@ -58,6 +72,9 @@ export class UIController {
     }
 
     init() {
+        // Collapsible panels
+        this.initCollapsibles();
+
         // UI visibility
         this.elements.btnHide.addEventListener('click', () => this.hideUI());
         this.elements.btnShow.addEventListener('click', () => this.showUI());
@@ -87,17 +104,22 @@ export class UIController {
         this.bindRange('rangeSurroundCount', 'surroundCountValue', 'onSurroundCountChange', true);
 
         // Background
-        this.bindSelect('selectBackground', 'onBackgroundTypeChange');
-        this.bindRange('rangeBgDensity', 'bgDensityValue', 'onBackgroundDensityChange', true);
-        this.bindRange('rangeBgSpeed', 'bgSpeedValue', 'onBackgroundSpeedChange', false);
+        this.bindSelect('selectBgPreset', 'onBgPresetChange');
+        this.bindRange('rangeBgBrightness', 'bgBrightnessValue', 'onBgBrightnessChange', false);
+        this.bindRange('rangeBgComplexity', 'bgComplexityValue', 'onBgComplexityChange', true);
+        this.bindRange('rangeBgDepth', 'bgDepthValue', 'onBgDepthChange', true);
+        this.bindRange('rangeBgDynamics', 'bgDynamicsValue', 'onBgDynamicsChange', false);
+        this.bindRange('rangeBgTwinkle', 'bgTwinkleValue', 'onBgTwinkleChange', false);
+        this.bindRange('rangeBgParallax', 'bgParallaxValue', 'onBgParallaxChange', false);
+        this.elements.toggleAudioSync?.addEventListener('change', (e) => this.emit('onAudioSyncChange', e.target.checked));
 
         // Lighting
-        this.bindSelect('selectLightMode', 'onLightModeChange');
-        this.bindRange('rangeBrightness', 'brightnessValue', 'onBrightnessChange', false);
-        this.bindRange('rangeLightComplexity', 'lightComplexityValue', 'onLightComplexityChange', true);
+        this.bindRange('rangeAmbient', 'ambientValue', 'onAmbientChange', false);
+        this.bindRange('rangeBacklight', 'backlightValue', 'onBacklightChange', false);
+        this.elements.colorBacklight?.addEventListener('input', (e) => this.emit('onBacklightColorChange', e.target.value));
+        this.elements.toggleLightAudio?.addEventListener('change', (e) => this.emit('onLightAudioChange', e.target.checked));
 
         // Scene
-        this.bindRange('rangeDepth', 'depthValue', 'onDepthChange', false);
         this.bindRange('rangeBloom', 'bloomValue', 'onBloomChange', false);
         this.bindRange('rangeFog', 'fogValue', 'onFogChange', false);
 
@@ -108,6 +130,19 @@ export class UIController {
         document.addEventListener('keydown', (e) => this.handleKeyboard(e));
         document.addEventListener('fullscreenchange', () => this.updateFullscreenBtn());
         document.addEventListener('webkitfullscreenchange', () => this.updateFullscreenBtn());
+    }
+
+    initCollapsibles() {
+        const headers = document.querySelectorAll('.collapsible-header');
+        headers.forEach(header => {
+            header.addEventListener('click', () => {
+                const targetId = header.getAttribute('data-target');
+                const content = document.getElementById(targetId);
+                if (content) {
+                    content.classList.toggle('expanded');
+                }
+            });
+        });
     }
 
     bindSelect(elementKey, callbackKey) {
@@ -151,7 +186,7 @@ export class UIController {
 
     updateFullscreenBtn() {
         const isFs = document.fullscreenElement || document.webkitFullscreenElement;
-        const span = this.elements.btnFullscreen.querySelector('span');
+        const span = this.elements.btnFullscreen?.querySelector('span');
         if (span) span.textContent = isFs ? 'Exit' : 'Full';
     }
 
@@ -166,18 +201,20 @@ export class UIController {
     }
 
     // Audio
-    setMicrophoneActive(active) { this.elements.btnMicrophone.classList.toggle('active', active); }
+    setMicrophoneActive(active) { this.elements.btnMicrophone?.classList.toggle('active', active); }
     showAudioPlayer(info) {
-        this.elements.audioPlayer.classList.remove('hidden');
-        this.elements.trackName.textContent = info.name || '—';
+        this.elements.audioPlayer?.classList.remove('hidden');
+        if (this.elements.trackName) this.elements.trackName.textContent = info.name || '—';
     }
-    hideAudioPlayer() { this.elements.audioPlayer.classList.add('hidden'); }
+    hideAudioPlayer() { this.elements.audioPlayer?.classList.add('hidden'); }
     setPlayingState(playing) {
-        this.elements.btnPlay.querySelector('.icon-play').classList.toggle('hidden', playing);
-        this.elements.btnPlay.querySelector('.icon-pause').classList.toggle('hidden', !playing);
+        this.elements.btnPlay?.querySelector('.icon-play')?.classList.toggle('hidden', playing);
+        this.elements.btnPlay?.querySelector('.icon-pause')?.classList.toggle('hidden', !playing);
     }
     updateProgress(current, total) {
-        this.elements.progressFill.style.width = `${total > 0 ? (current / total) * 100 : 0}%`;
+        if (this.elements.progressFill) {
+            this.elements.progressFill.style.width = `${total > 0 ? (current / total) * 100 : 0}%`;
+        }
     }
 
     // Update UI from randomize
@@ -188,9 +225,8 @@ export class UIController {
     }
     setRingsSelect(v) { if (this.elements.selectRings) this.elements.selectRings.value = v; }
     setSurroundSelect(v) { if (this.elements.selectSurround) this.elements.selectSurround.value = v; }
-    setBackgroundSelect(v) { if (this.elements.selectBackground) this.elements.selectBackground.value = v; }
-    setLightModeSelect(v) { if (this.elements.selectLightMode) this.elements.selectLightMode.value = v; }
+    setBgPresetSelect(v) { if (this.elements.selectBgPreset) this.elements.selectBgPreset.value = v; }
 
-    hideLoader() { this.elements.loader.classList.add('hidden'); }
+    hideLoader() { this.elements.loader?.classList.add('hidden'); }
     showError(msg) { console.error('[UI]', msg); alert(msg); }
 }

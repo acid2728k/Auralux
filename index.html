@@ -64,184 +64,245 @@
             </div>
         </div>
 
-        <div class="ui-divider"></div>
-
-        <!-- GEOMETRY -->
-        <div class="ui-section-header">Geometry</div>
-        
-        <div class="ui-section column">
-            <span class="ui-label">Center Shape</span>
-            <select id="select-geometry" class="ui-select">
-                <optgroup label="Platonic">
-                    <option value="tetrahedron">Tetrahedron</option>
-                    <option value="hexahedron">Cube</option>
-                    <option value="octahedron">Octahedron</option>
-                    <option value="dodecahedron">Dodecahedron</option>
-                    <option value="icosahedron" selected>Icosahedron</option>
-                </optgroup>
-                <optgroup label="Complex">
-                    <option value="stellatedOcta">Stellated Octa</option>
-                    <option value="torusKnot">Torus Knot</option>
-                    <option value="kleinBottle">Klein Bottle</option>
-                    <option value="mobiusStrip">Möbius Strip</option>
-                </optgroup>
-                <optgroup label="Fractal">
-                    <option value="sierpinski">Sierpinski</option>
-                    <option value="geodesic">Geodesic</option>
-                </optgroup>
-            </select>
-        </div>
-
-        <div class="ui-section column">
-            <div class="ui-row">
-                <span class="ui-label">Detail</span>
-                <span id="detail-value" class="ui-value">3</span>
+        <!-- ===================== GEOMETRY ===================== -->
+        <div class="collapsible-panel">
+            <button class="collapsible-header" data-target="panel-geometry">
+                <span>Geometry</span>
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6,9 12,15 18,9"/>
+                </svg>
+            </button>
+            <div id="panel-geometry" class="collapsible-content expanded">
+                <div class="ui-section column">
+                    <span class="ui-label">Center Shape</span>
+                    <select id="select-geometry" class="ui-select">
+                        <optgroup label="Platonic">
+                            <option value="tetrahedron">Tetrahedron</option>
+                            <option value="hexahedron">Cube</option>
+                            <option value="octahedron">Octahedron</option>
+                            <option value="dodecahedron">Dodecahedron</option>
+                            <option value="icosahedron" selected>Icosahedron</option>
+                        </optgroup>
+                        <optgroup label="Complex">
+                            <option value="stellatedOcta">Stellated Octa</option>
+                            <option value="torusKnot">Torus Knot</option>
+                            <option value="kleinBottle">Klein Bottle</option>
+                            <option value="mobiusStrip">Möbius Strip</option>
+                        </optgroup>
+                        <optgroup label="Fractal">
+                            <option value="sierpinski">Sierpinski</option>
+                            <option value="geodesic">Geodesic</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="ui-section column">
+                    <div class="ui-row">
+                        <span class="ui-label">Detail</span>
+                        <span id="detail-value" class="ui-value">3</span>
+                    </div>
+                    <input type="range" id="range-detail" class="ui-range" min="1" max="6" step="1" value="3">
+                </div>
             </div>
-            <input type="range" id="range-detail" class="ui-range" min="1" max="6" step="1" value="3">
         </div>
 
-        <div class="ui-divider"></div>
-
-        <!-- RINGS -->
-        <div class="ui-section-header">Rings</div>
-
-        <div class="ui-section column">
-            <span class="ui-label">Style</span>
-            <select id="select-rings" class="ui-select">
-                <option value="orbital">Orbital</option>
-                <option value="saturn">Saturn</option>
-                <option value="gyroscope">Gyroscope</option>
-                <option value="atomic">Atomic</option>
-                <option value="spiral">Spiral</option>
-                <option value="cage">Cage</option>
-                <option value="none">None</option>
-            </select>
-        </div>
-
-        <div class="ui-section column">
-            <div class="ui-row">
-                <span class="ui-label">Count</span>
-                <span id="rings-count-value" class="ui-value">4</span>
+        <!-- ===================== RINGS ===================== -->
+        <div class="collapsible-panel">
+            <button class="collapsible-header" data-target="panel-rings">
+                <span>Rings</span>
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6,9 12,15 18,9"/>
+                </svg>
+            </button>
+            <div id="panel-rings" class="collapsible-content">
+                <div class="ui-section column">
+                    <span class="ui-label">Style</span>
+                    <select id="select-rings" class="ui-select">
+                        <option value="orbital">Orbital</option>
+                        <option value="saturn">Saturn</option>
+                        <option value="gyroscope">Gyroscope</option>
+                        <option value="atomic">Atomic</option>
+                        <option value="spiral">Spiral</option>
+                        <option value="cage">Cage</option>
+                        <option value="none">None</option>
+                    </select>
+                </div>
+                <div class="ui-section column">
+                    <div class="ui-row">
+                        <span class="ui-label">Count</span>
+                        <span id="rings-count-value" class="ui-value">4</span>
+                    </div>
+                    <input type="range" id="range-rings-count" class="ui-range" min="1" max="8" step="1" value="4">
+                </div>
             </div>
-            <input type="range" id="range-rings-count" class="ui-range" min="1" max="8" step="1" value="4">
         </div>
 
-        <div class="ui-divider"></div>
-
-        <!-- SURROUND -->
-        <div class="ui-section-header">Surround</div>
-
-        <div class="ui-section column">
-            <span class="ui-label">Type</span>
-            <select id="select-surround" class="ui-select">
-                <option value="floatingPolyhedra">Polyhedra</option>
-                <option value="particles">Particles</option>
-                <option value="asteroids">Asteroids</option>
-                <option value="crystals">Crystals</option>
-                <option value="none">None</option>
-            </select>
-        </div>
-
-        <div class="ui-section column">
-            <div class="ui-row">
-                <span class="ui-label">Count</span>
-                <span id="surround-count-value" class="ui-value">20</span>
+        <!-- ===================== SURROUND ===================== -->
+        <div class="collapsible-panel">
+            <button class="collapsible-header" data-target="panel-surround">
+                <span>Surround</span>
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6,9 12,15 18,9"/>
+                </svg>
+            </button>
+            <div id="panel-surround" class="collapsible-content">
+                <div class="ui-section column">
+                    <span class="ui-label">Type</span>
+                    <select id="select-surround" class="ui-select">
+                        <option value="floatingPolyhedra">Polyhedra</option>
+                        <option value="particles">Particles</option>
+                        <option value="asteroids">Asteroids</option>
+                        <option value="crystals">Crystals</option>
+                        <option value="none">None</option>
+                    </select>
+                </div>
+                <div class="ui-section column">
+                    <div class="ui-row">
+                        <span class="ui-label">Count</span>
+                        <span id="surround-count-value" class="ui-value">20</span>
+                    </div>
+                    <input type="range" id="range-surround-count" class="ui-range" min="5" max="50" step="5" value="20">
+                </div>
             </div>
-            <input type="range" id="range-surround-count" class="ui-range" min="5" max="50" step="5" value="20">
         </div>
 
-        <div class="ui-divider"></div>
+        <!-- ===================== BACKGROUND & LIGHTING ===================== -->
+        <div class="collapsible-panel">
+            <button class="collapsible-header accent" data-target="panel-bg-light">
+                <span>Background & Lighting</span>
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6,9 12,15 18,9"/>
+                </svg>
+            </button>
+            <div id="panel-bg-light" class="collapsible-content expanded">
+                
+                <!-- BACKGROUND SUB-GROUP -->
+                <div class="sub-group-header">Background</div>
 
-        <!-- BACKGROUND -->
-        <div class="ui-section-header">Background</div>
+                <div class="ui-section column">
+                    <span class="ui-label">Frame</span>
+                    <select id="select-bg-preset" class="ui-select">
+                        <option value="void">Void</option>
+                        <option value="nebula" selected>Nebula</option>
+                        <option value="dust">Dust</option>
+                        <option value="drift">Drift</option>
+                        <option value="prism">Prism</option>
+                    </select>
+                </div>
 
-        <div class="ui-section column">
-            <span class="ui-label">Objects</span>
-            <select id="select-background" class="ui-select">
-                <option value="flyingDebris">Flying Debris</option>
-                <option value="starfield">Starfield</option>
-                <option value="meteors">Meteors</option>
-                <option value="nebula">Nebula</option>
-                <option value="grid">Grid</option>
-                <option value="none">None</option>
-            </select>
-        </div>
+                <div class="ui-section column">
+                    <div class="ui-row">
+                        <span class="ui-label">Brightness</span>
+                        <span id="bg-brightness-value" class="ui-value">1.0</span>
+                    </div>
+                    <input type="range" id="range-bg-brightness" class="ui-range" min="0" max="2" step="0.1" value="1">
+                </div>
 
-        <div class="ui-section column">
-            <div class="ui-row">
-                <span class="ui-label">Density</span>
-                <span id="bg-density-value" class="ui-value">50</span>
+                <div class="ui-section column">
+                    <div class="ui-row">
+                        <span class="ui-label">Complexity</span>
+                        <span id="bg-complexity-value" class="ui-value">5</span>
+                    </div>
+                    <input type="range" id="range-bg-complexity" class="ui-range" min="1" max="10" step="1" value="5">
+                </div>
+
+                <div class="ui-section column">
+                    <div class="ui-row">
+                        <span class="ui-label">Depth</span>
+                        <span id="bg-depth-value" class="ui-value">200</span>
+                    </div>
+                    <input type="range" id="range-bg-depth" class="ui-range" min="50" max="1000" step="50" value="200">
+                </div>
+
+                <div class="ui-section column">
+                    <div class="ui-row">
+                        <span class="ui-label">Dynamics</span>
+                        <span id="bg-dynamics-value" class="ui-value">1.0</span>
+                    </div>
+                    <input type="range" id="range-bg-dynamics" class="ui-range" min="0" max="2" step="0.1" value="1">
+                </div>
+
+                <div class="ui-section column">
+                    <div class="ui-row">
+                        <span class="ui-label">Twinkle</span>
+                        <span id="bg-twinkle-value" class="ui-value">0.5</span>
+                    </div>
+                    <input type="range" id="range-bg-twinkle" class="ui-range" min="0" max="1" step="0.1" value="0.5">
+                </div>
+
+                <div class="ui-section column">
+                    <div class="ui-row">
+                        <span class="ui-label">Parallax</span>
+                        <span id="bg-parallax-value" class="ui-value">0.5</span>
+                    </div>
+                    <input type="range" id="range-bg-parallax" class="ui-range" min="0" max="1" step="0.1" value="0.5">
+                </div>
+
+                <div class="ui-section">
+                    <label class="ui-toggle">
+                        <input type="checkbox" id="toggle-audio-sync" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span class="ui-label">Sync to Audio</span>
+                </div>
+
+                <div class="sub-divider"></div>
+
+                <!-- LIGHTING SUB-GROUP -->
+                <div class="sub-group-header">Lighting</div>
+                
+                <div class="ui-section column">
+                    <div class="ui-row">
+                        <span class="ui-label">Ambient Intensity</span>
+                        <span id="ambient-value" class="ui-value">0.3</span>
+                    </div>
+                    <input type="range" id="range-ambient" class="ui-range" min="0" max="1" step="0.05" value="0.3">
+                </div>
+
+                <div class="ui-section column">
+                    <div class="ui-row">
+                        <span class="ui-label">Back Light Intensity</span>
+                        <span id="backlight-value" class="ui-value">2.0</span>
+                    </div>
+                    <input type="range" id="range-backlight" class="ui-range" min="0" max="5" step="0.1" value="2">
+                </div>
+
+                <div class="ui-section column">
+                    <div class="ui-row">
+                        <span class="ui-label">Back Light Color</span>
+                        <input type="color" id="color-backlight" class="ui-color" value="#a855f7">
+                    </div>
+                </div>
+
+                <div class="ui-section">
+                    <label class="ui-toggle">
+                        <input type="checkbox" id="toggle-light-audio" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span class="ui-label">Light reacts to audio</span>
+                </div>
+
+                <div class="sub-divider"></div>
+
+                <!-- SCENE SUB-GROUP -->
+                <div class="sub-group-header">Scene</div>
+
+                <div class="ui-section column">
+                    <div class="ui-row">
+                        <span class="ui-label">Bloom</span>
+                        <span id="bloom-value" class="ui-value">1.0</span>
+                    </div>
+                    <input type="range" id="range-bloom" class="ui-range" min="0" max="2.5" step="0.1" value="1">
+                </div>
+
+                <div class="ui-section column">
+                    <div class="ui-row">
+                        <span class="ui-label">Fog</span>
+                        <span id="fog-value" class="ui-value">1.0</span>
+                    </div>
+                    <input type="range" id="range-fog" class="ui-range" min="0" max="2" step="0.1" value="1">
+                </div>
+
             </div>
-            <input type="range" id="range-bg-density" class="ui-range" min="10" max="150" step="10" value="50">
-        </div>
-
-        <div class="ui-section column">
-            <div class="ui-row">
-                <span class="ui-label">Speed</span>
-                <span id="bg-speed-value" class="ui-value">1.0</span>
-            </div>
-            <input type="range" id="range-bg-speed" class="ui-range" min="0.1" max="3" step="0.1" value="1">
-        </div>
-
-        <div class="ui-divider"></div>
-
-        <!-- LIGHTING -->
-        <div class="ui-section-header">Lighting</div>
-
-        <div class="ui-section column">
-            <span class="ui-label">Mode</span>
-            <select id="select-light-mode" class="ui-select">
-                <option value="dynamic">Dynamic</option>
-                <option value="static">Static</option>
-                <option value="pulse">Pulse</option>
-                <option value="strobe">Strobe</option>
-                <option value="rainbow">Rainbow</option>
-            </select>
-        </div>
-
-        <div class="ui-section column">
-            <div class="ui-row">
-                <span class="ui-label">Brightness</span>
-                <span id="brightness-value" class="ui-value">1.0</span>
-            </div>
-            <input type="range" id="range-brightness" class="ui-range" min="0.2" max="3" step="0.1" value="1">
-        </div>
-
-        <div class="ui-section column">
-            <div class="ui-row">
-                <span class="ui-label">Complexity</span>
-                <span id="light-complexity-value" class="ui-value">3</span>
-            </div>
-            <input type="range" id="range-light-complexity" class="ui-range" min="1" max="5" step="1" value="3">
-        </div>
-
-        <div class="ui-divider"></div>
-
-        <!-- SCENE -->
-        <div class="ui-section-header">Scene</div>
-
-        <div class="ui-section column">
-            <div class="ui-row">
-                <span class="ui-label">Depth</span>
-                <span id="depth-value" class="ui-value">1.0</span>
-            </div>
-            <input type="range" id="range-depth" class="ui-range" min="0.3" max="2" step="0.1" value="1">
-        </div>
-
-        <div class="ui-section column">
-            <div class="ui-row">
-                <span class="ui-label">Bloom</span>
-                <span id="bloom-value" class="ui-value">1.0</span>
-            </div>
-            <input type="range" id="range-bloom" class="ui-range" min="0" max="2.5" step="0.1" value="1">
-        </div>
-
-        <div class="ui-section column">
-            <div class="ui-row">
-                <span class="ui-label">Fog</span>
-                <span id="fog-value" class="ui-value">1.0</span>
-            </div>
-            <input type="range" id="range-fog" class="ui-range" min="0" max="2" step="0.1" value="1">
         </div>
 
         <div class="ui-divider"></div>

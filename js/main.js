@@ -32,7 +32,9 @@ class Auralux {
     }
 
     setupCallbacks() {
-        // Audio
+        // =====================================================
+        // AUDIO
+        // =====================================================
         this.ui.on('onMicrophoneClick', async () => {
             try {
                 await this.audioAnalyzer.connectMicrophone();
@@ -53,8 +55,13 @@ class Auralux {
                 if (audio) {
                     audio.addEventListener('play', () => this.ui.setPlayingState(true));
                     audio.addEventListener('pause', () => this.ui.setPlayingState(false));
-                    audio.addEventListener('ended', () => { this.ui.setPlayingState(false); this.ui.updateProgress(0, info.duration); });
-                    audio.addEventListener('timeupdate', () => this.ui.updateProgress(this.audioAnalyzer.getCurrentTime(), this.audioAnalyzer.getDuration()));
+                    audio.addEventListener('ended', () => { 
+                        this.ui.setPlayingState(false); 
+                        this.ui.updateProgress(0, info.duration); 
+                    });
+                    audio.addEventListener('timeupdate', () => {
+                        this.ui.updateProgress(this.audioAnalyzer.getCurrentTime(), this.audioAnalyzer.getDuration());
+                    });
                 }
             } catch (err) {
                 this.ui.showError('Failed to load audio: ' + err.message);
@@ -64,51 +71,77 @@ class Auralux {
         this.ui.on('onPlayPause', () => this.ui.setPlayingState(this.audioAnalyzer.togglePlayPause()));
         this.ui.on('onSeek', (pos) => this.audioAnalyzer.seek(pos));
 
-        // Geometry
+        // =====================================================
+        // GEOMETRY
+        // =====================================================
         this.ui.on('onGeometryChange', (v) => this.visualizer.setGeometry(v));
         this.ui.on('onDetailChange', (v) => this.visualizer.setDetail(v));
 
-        // Rings
+        // =====================================================
+        // RINGS
+        // =====================================================
         this.ui.on('onRingsStyleChange', (v) => this.visualizer.setRingsStyle(v));
         this.ui.on('onRingsCountChange', (v) => this.visualizer.setRingsCount(v));
 
-        // Surround
+        // =====================================================
+        // SURROUND
+        // =====================================================
         this.ui.on('onSurroundTypeChange', (v) => this.visualizer.setSurroundType(v));
         this.ui.on('onSurroundCountChange', (v) => this.visualizer.setSurroundCount(v));
 
-        // Background
-        this.ui.on('onBackgroundTypeChange', (v) => this.visualizer.setBackgroundType(v));
-        this.ui.on('onBackgroundDensityChange', (v) => this.visualizer.setBackgroundDensity(v));
-        this.ui.on('onBackgroundSpeedChange', (v) => this.visualizer.setBackgroundSpeed(v));
+        // =====================================================
+        // BACKGROUND
+        // =====================================================
+        this.ui.on('onBgPresetChange', (v) => this.visualizer.setBgPreset(v));
+        this.ui.on('onBgBrightnessChange', (v) => this.visualizer.setBgBrightness(v));
+        this.ui.on('onBgComplexityChange', (v) => this.visualizer.setBgComplexity(v));
+        this.ui.on('onBgDepthChange', (v) => this.visualizer.setBgDepth(v));
+        this.ui.on('onBgDynamicsChange', (v) => this.visualizer.setBgDynamics(v));
+        this.ui.on('onBgTwinkleChange', (v) => this.visualizer.setBgTwinkle(v));
+        this.ui.on('onBgParallaxChange', (v) => this.visualizer.setBgParallax(v));
+        this.ui.on('onAudioSyncChange', (v) => this.visualizer.setBgAudioSync(v));
 
-        // Lighting
-        this.ui.on('onLightModeChange', (v) => this.visualizer.setLightMode(v));
-        this.ui.on('onBrightnessChange', (v) => this.visualizer.setBrightness(v));
-        this.ui.on('onLightComplexityChange', (v) => this.visualizer.setLightComplexity(v));
+        // =====================================================
+        // LIGHTING
+        // =====================================================
+        this.ui.on('onAmbientChange', (v) => this.visualizer.setAmbientIntensity(v));
+        this.ui.on('onBacklightChange', (v) => this.visualizer.setBacklightIntensity(v));
+        this.ui.on('onBacklightColorChange', (v) => this.visualizer.setBacklightColor(v));
+        this.ui.on('onLightAudioChange', (v) => this.visualizer.setLightReactsToAudio(v));
 
-        // Scene
-        this.ui.on('onDepthChange', (v) => this.visualizer.setDepth(v));
+        // =====================================================
+        // SCENE
+        // =====================================================
         this.ui.on('onBloomChange', (v) => this.visualizer.setBloom(v));
         this.ui.on('onFogChange', (v) => this.visualizer.setFog(v));
 
-        // Randomize
+        // =====================================================
+        // RANDOMIZE
+        // =====================================================
         this.ui.on('onRandomize', () => {
             const r = this.visualizer.randomize();
             this.ui.setGeometrySelect(r.geometry);
             this.ui.setDetailValue(r.detail);
             this.ui.setRingsSelect(r.rings);
             this.ui.setSurroundSelect(r.surround);
-            this.ui.setBackgroundSelect(r.background);
-            this.ui.setLightModeSelect(r.lightMode);
+            this.ui.setBgPresetSelect(r.bgPreset);
         });
     }
 
-    start() { this.isRunning = true; this.loop(); }
-    stop() { this.isRunning = false; if (this.animationId) cancelAnimationFrame(this.animationId); }
+    start() { 
+        this.isRunning = true; 
+        this.loop(); 
+    }
+    
+    stop() { 
+        this.isRunning = false; 
+        if (this.animationId) cancelAnimationFrame(this.animationId); 
+    }
 
     loop() {
         if (!this.isRunning) return;
         this.animationId = requestAnimationFrame(() => this.loop());
+        
         if (this.audioAnalyzer.sourceType) {
             this.visualizer.update(this.audioAnalyzer.analyze());
         } else {
@@ -116,8 +149,17 @@ class Auralux {
         }
     }
 
-    destroy() { this.stop(); this.audioAnalyzer?.destroy(); this.visualizer?.destroy(); }
+    destroy() { 
+        this.stop(); 
+        this.audioAnalyzer?.destroy(); 
+        this.visualizer?.destroy(); 
+    }
 }
 
-document.addEventListener('DOMContentLoaded', () => { window.auralux = new Auralux(); });
-window.addEventListener('beforeunload', () => { window.auralux?.destroy(); });
+document.addEventListener('DOMContentLoaded', () => { 
+    window.auralux = new Auralux(); 
+});
+
+window.addEventListener('beforeunload', () => { 
+    window.auralux?.destroy(); 
+});
