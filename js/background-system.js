@@ -129,6 +129,9 @@ export class BackgroundSystem {
         const fragmentShader = `
             uniform float uTime;
             uniform float uBrightness;
+            uniform float uAmbient;
+            uniform float uBacklightIntensity;
+            uniform vec3 uBacklightColor;
             uniform vec3 uColor1;
             uniform vec3 uColor2;
             varying vec2 vUv;
@@ -150,12 +153,18 @@ export class BackgroundSystem {
             }
             
             void main() {
-                // Radial gradient from center
                 vec2 center = vUv - 0.5;
                 float dist = length(center);
                 
                 // Base dark gradient
                 vec3 color = mix(uColor1, uColor2, dist * 1.5);
+                
+                // Ambient fill
+                color += uAmbient * 0.08;
+                
+                // Backlight glow from center
+                float backlightMask = 1.0 - smoothstep(0.0, 0.7, dist);
+                color += uBacklightColor * uBacklightIntensity * backlightMask * 0.06;
                 
                 // Subtle noise
                 float n = noise(vUv * 3.0 + uTime * 0.02) * 0.08;
@@ -179,6 +188,9 @@ export class BackgroundSystem {
             uniforms: {
                 uTime: { value: 0 },
                 uBrightness: { value: this.config.brightness },
+                uAmbient: { value: this.config.ambientIntensity },
+                uBacklightIntensity: { value: this.config.backlightIntensity },
+                uBacklightColor: { value: new THREE.Color(this.config.backlightColor) },
                 uColor1: { value: bgColor1 },
                 uColor2: { value: bgColor2 }
             },
@@ -240,6 +252,23 @@ export class BackgroundSystem {
             this.backLight.intensity = this.config.backlightIntensity;
             this.backLight.color.set(this.config.backlightColor);
         }
+        
+        // Sync to background quad shader
+        if (this.bgMaterial) {
+            this.bgMaterial.uniforms.uAmbient.value = this.config.ambientIntensity;
+            this.bgMaterial.uniforms.uBacklightIntensity.value = this.config.backlightIntensity;
+            this.bgMaterial.uniforms.uBacklightColor.value.set(this.config.backlightColor);
+        }
+        
+        // Sync to particle layer shaders
+        const blColor = new THREE.Color(this.config.backlightColor);
+        Object.values(this.layers).forEach(layer => {
+            if (layer && layer.material.uniforms) {
+                layer.material.uniforms.uAmbient.value = this.config.ambientIntensity;
+                layer.material.uniforms.uBacklightColor.value.copy(blColor);
+                layer.material.uniforms.uBacklightIntensity.value = this.config.backlightIntensity;
+            }
+        });
     }
 
     // =========================================================
@@ -346,6 +375,7 @@ export class BackgroundSystem {
             uniform float uTwinkle;
             uniform float uDynamics;
             uniform float uBrightness;
+            uniform float uAmbient;
             uniform float uAudioEnergy;
             
             varying float vAlpha;
@@ -358,6 +388,7 @@ export class BackgroundSystem {
                 float twinkle = sin(uTime * 2.0 + aPhase) * 0.5 + 0.5;
                 vAlpha = mix(0.5, 1.0, twinkle * uTwinkle) * uBrightness;
                 vAlpha *= 1.0 + uAudioEnergy * 0.3;
+                vAlpha *= 0.5 + uAmbient * 0.8;
                 
                 vColorIndex = aColorIndex;
                 
@@ -369,6 +400,8 @@ export class BackgroundSystem {
 
         const fragmentShader = `
             uniform vec3 uColors[4];
+            uniform vec3 uBacklightColor;
+            uniform float uBacklightIntensity;
             uniform float uOpacity;
             
             varying float vAlpha;
@@ -385,6 +418,9 @@ export class BackgroundSystem {
                 int idx = int(vColorIndex);
                 vec3 color = uColors[idx];
                 
+                // Mix in backlight color tint
+                color = mix(color, uBacklightColor, uBacklightIntensity * 0.08);
+                
                 gl_FragColor = vec4(color, alpha);
             }
         `;
@@ -398,8 +434,11 @@ export class BackgroundSystem {
                 uTwinkle: { value: this.config.twinkle },
                 uDynamics: { value: this.config.dynamics },
                 uBrightness: { value: this.config.brightness },
+                uAmbient: { value: this.config.ambientIntensity },
                 uAudioEnergy: { value: 0 },
                 uColors: { value: colorArray },
+                uBacklightColor: { value: new THREE.Color(this.config.backlightColor) },
+                uBacklightIntensity: { value: this.config.backlightIntensity },
                 uOpacity: { value: opacity }
             },
             vertexShader,
