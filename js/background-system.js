@@ -80,6 +80,8 @@ export class BackgroundSystem {
         // Lights
         this.ambientLight = null;
         this.backLight = null;
+        this.frontLight = null;
+        this.accentLights = [];
         
         // Audio smoothing
         this.smoothedAudio = { energy: 0, bass: 0 };
@@ -199,16 +201,35 @@ export class BackgroundSystem {
         // Remove existing
         if (this.ambientLight) this.scene.remove(this.ambientLight);
         if (this.backLight) this.scene.remove(this.backLight);
+        if (this.frontLight) this.scene.remove(this.frontLight);
+        this.accentLights.forEach(l => this.scene.remove(l));
+        this.accentLights = [];
 
-        // Ambient
-        this.ambientLight = new THREE.AmbientLight(0x111122, this.config.ambientIntensity);
+        // Ambient — white so intensity slider has clear visual effect
+        this.ambientLight = new THREE.AmbientLight(0xffffff, this.config.ambientIntensity);
         this.scene.add(this.ambientLight);
 
-        // Backlight (directional into depth)
+        // Front key light — always illuminates center geometry
+        this.frontLight = new THREE.PointLight(0xffffff, 2, 100);
+        this.frontLight.position.set(0, 5, 25);
+        this.scene.add(this.frontLight);
+
+        // Backlight — large PointLight from behind with user color
         const blColor = new THREE.Color(this.config.backlightColor);
-        this.backLight = new THREE.DirectionalLight(blColor, this.config.backlightIntensity);
-        this.backLight.position.set(0, 5, -30);
+        this.backLight = new THREE.PointLight(blColor, this.config.backlightIntensity, 150);
+        this.backLight.position.set(0, 10, -25);
         this.scene.add(this.backLight);
+
+        // Side accent lights
+        const accent1 = new THREE.PointLight(0xa855f7, 1.5, 80);
+        accent1.position.set(-25, 15, 10);
+        this.scene.add(accent1);
+        this.accentLights.push(accent1);
+
+        const accent2 = new THREE.PointLight(0x06b6d4, 1.0, 80);
+        accent2.position.set(20, -10, -15);
+        this.scene.add(accent2);
+        this.accentLights.push(accent2);
     }
 
     updateLights() {
@@ -447,8 +468,18 @@ export class BackgroundSystem {
         this.updateLayer(this.layers.near, dt, dynamicsSpeed * parallaxNear, audioEnergy);
 
         // Light audio reaction
-        if (this.config.lightReactsToAudio && this.backLight) {
-            this.backLight.intensity = this.config.backlightIntensity * (1 + audioBass * 0.5);
+        if (this.config.lightReactsToAudio) {
+            if (this.backLight) {
+                this.backLight.intensity = this.config.backlightIntensity * (1 + audioBass * 0.8);
+            }
+            if (this.frontLight) {
+                this.frontLight.intensity = 2 + audioEnergy * 3;
+            }
+            this.accentLights.forEach((l, i) => {
+                l.intensity = 1.0 + audioEnergy * 2;
+                l.position.x = Math.sin(this.time * 0.4 + i * Math.PI) * 25;
+                l.position.y = Math.cos(this.time * 0.3 + i * 1.5) * 15;
+            });
         }
 
         // Bass flash (max once per 0.3s)
@@ -585,6 +616,8 @@ export class BackgroundSystem {
         
         if (this.ambientLight) this.scene.remove(this.ambientLight);
         if (this.backLight) this.scene.remove(this.backLight);
+        if (this.frontLight) this.scene.remove(this.frontLight);
+        this.accentLights.forEach(l => this.scene.remove(l));
         
         this.scene.remove(this.group);
     }

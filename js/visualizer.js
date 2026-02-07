@@ -181,8 +181,9 @@ export class Visualizer {
         const geometry = this.createGeometry(this.settings.geometry, this.settings.detail);
 
         const solidMat = new THREE.MeshPhongMaterial({
-            color: 0x0a0a0a, emissive: 0x111111,
-            transparent: true, opacity: 0.5, side: THREE.DoubleSide
+            color: 0x222233, emissive: 0x0a0a12,
+            specular: 0x666688, shininess: 60,
+            transparent: true, opacity: 0.65, side: THREE.DoubleSide
         });
         this.centerSolid = new THREE.Mesh(geometry, solidMat);
         this.centerGroup.add(this.centerSolid);
