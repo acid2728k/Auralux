@@ -298,6 +298,7 @@ export class Visualizer {
             mesh.position.set(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
             mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
             mesh.userData = { type: surroundType, angle, radius, baseY: y, rotSpeed: 0.5 + Math.random() };
+            if (material.transparent) material.userData = { baseOpacity: material.opacity };
             this.surroundGroup.add(mesh);
         }
     }
@@ -350,8 +351,8 @@ export class Visualizer {
 
         // Update center geometry
         this.updateCenter(amplitude, bass, mid, delta);
-        this.updateRings(amplitude, delta);
-        this.updateSurround(amplitude, delta);
+        this.updateRings(amplitude, bass, mid, treble, delta);
+        this.updateSurround(amplitude, bass, mid, delta);
         this.updateCamera();
 
         // Update background system
@@ -384,19 +385,91 @@ export class Visualizer {
         this.centerWire.material.color.setHSL(hsl.h, hsl.s, 0.4 + amplitude * 0.5);
     }
 
-    updateRings(amplitude, delta) {
+    updateRings(amplitude, bass, mid, treble, delta) {
+        const count = this.ringsGroup.children.length;
+        
         this.ringsGroup.children.forEach((ring, i) => {
             const d = ring.userData;
-            ring.rotation.z += delta * (d.speed || 0.3) * (1 + amplitude) * (i % 2 === 0 ? 1 : -1);
+            const style = d.type;
+            const t = i / Math.max(count, 1);
+            
+            // Map each ring to a different frequency band
+            const bandValue = i % 3 === 0 ? bass : (i % 3 === 1 ? mid : treble);
+            
+            // Rotation — speed reacts to amplitude, direction alternates
+            const dir = i % 2 === 0 ? 1 : -1;
+            ring.rotation.z += delta * (d.speed || 0.3) * (1 + amplitude * 2) * dir;
+            ring.rotation.x += delta * 0.05 * (1 + mid) * dir;
+            
+            // Scale pulse — each ring pulses to its band
+            const pulseScale = 1 + bandValue * 0.3;
+            ring.scale.setScalar(ring.scale.x + (pulseScale - ring.scale.x) * 0.15);
+            
+            // Opacity pulse
+            const baseOpacity = 0.6 - i * 0.08;
+            ring.material.opacity = baseOpacity + amplitude * 0.3;
+            
+            // Style-specific audio reactions
+            switch (style) {
+                case 'orbital':
+                case 'atomic':
+                    // Tilt wobble on bass
+                    ring.rotation.x += Math.sin(this.time * 2 + i) * bass * 0.05;
+                    break;
+                case 'gyroscope':
+                    // Counter-rotate on treble
+                    ring.rotation.y += delta * treble * 2 * dir;
+                    break;
+                case 'spiral':
+                    // Vertical bounce on bass
+                    const baseY = ((i / count) - 0.5) * this.baseScale * 2;
+                    ring.position.y = baseY + Math.sin(this.time * 3 + i) * bass * 2;
+                    break;
+                case 'cage':
+                    // Expand/contract on amplitude
+                    ring.scale.setScalar(1 + amplitude * 0.5 + Math.sin(this.time + i * 0.5) * 0.1);
+                    break;
+                case 'saturn':
+                    // Gentle tilt sway on mid
+                    ring.rotation.x = Math.PI / 2 + Math.sin(this.time + i) * mid * 0.2;
+                    break;
+            }
+            
+            // Color shift — hue shifts slightly with audio
+            const hsl = {};
+            ring.material.color.getHSL(hsl);
+            ring.material.color.setHSL(
+                (hsl.h + amplitude * 0.02 + delta * 0.01) % 1,
+                hsl.s,
+                Math.min(1, hsl.l + bandValue * 0.15)
+            );
         });
     }
 
-    updateSurround(amplitude, delta) {
-        this.surroundGroup.children.forEach(child => {
+    updateSurround(amplitude, bass, mid, delta) {
+        this.surroundGroup.children.forEach((child, i) => {
             const d = child.userData;
-            child.rotation.x += delta * (d.rotSpeed || 0.5) * (1 + amplitude);
-            child.rotation.y += delta * (d.rotSpeed || 0.5) * 0.7;
-            child.position.y = d.baseY + Math.sin(this.time + d.angle) * 0.5;
+            
+            // Rotation — speed reacts to audio
+            child.rotation.x += delta * (d.rotSpeed || 0.5) * (1 + amplitude * 1.5);
+            child.rotation.y += delta * (d.rotSpeed || 0.5) * (0.7 + mid);
+            
+            // Floating Y with bass bounce
+            child.position.y = d.baseY + Math.sin(this.time + d.angle) * 0.5 + bass * 0.8;
+            
+            // Scale pulse
+            const pulseScale = 1 + amplitude * 0.4;
+            child.scale.setScalar(child.scale.x + (pulseScale - child.scale.x) * 0.1);
+            
+            // Orbit radius breathe
+            const breatheRadius = d.radius * (1 + Math.sin(this.time * 0.5) * amplitude * 0.3);
+            child.position.x = Math.cos(d.angle + this.time * 0.1) * breatheRadius;
+            child.position.z = Math.sin(d.angle + this.time * 0.1) * breatheRadius;
+            
+            // Opacity pulse for transparent materials
+            if (child.material.transparent) {
+                child.material.opacity = Math.min(1, (child.material.userData?.baseOpacity || 0.7) + amplitude * 0.3);
+            }
         });
     }
 
