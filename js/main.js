@@ -110,6 +110,13 @@ class Auralux {
         this.ui.on('onLightAudioChange', (v) => this.visualizer.setLightReactsToAudio(v));
 
         // =====================================================
+        // GLOBAL
+        // =====================================================
+        this.ui.on('onGlobalLightChange', (v) => this.visualizer.setGlobalLight(v));
+        this.ui.on('onTemperatureChange', (v) => this.visualizer.setTemperature(v));
+        this.ui.on('onContrastChange', (v) => this.visualizer.setContrast(v));
+
+        // =====================================================
         // SCENE
         // =====================================================
         this.ui.on('onBloomChange', (v) => this.visualizer.setBloom(v));

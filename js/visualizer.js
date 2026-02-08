@@ -509,6 +509,14 @@ export class Visualizer {
     setBacklightColor(val) { this.backgroundSystem?.setBacklightColor(val); }
     setLightReactsToAudio(val) { this.backgroundSystem?.setLightReactsToAudio(val); }
 
+    // Global
+    setGlobalLight(val) {
+        this.backgroundSystem?.setGlobalLight(val);
+        this.renderer.toneMappingExposure = 1.5 * val;
+    }
+    setTemperature(val) { this.backgroundSystem?.setTemperature(val); }
+    setContrast(val) { this.backgroundSystem?.setContrast(val); }
+
     // =====================================================
     // RANDOMIZE & IDLE
     // =====================================================

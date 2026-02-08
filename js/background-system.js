@@ -62,7 +62,10 @@ export class BackgroundSystem {
             ambientIntensity: 0.3,
             backlightIntensity: 2.0,
             backlightColor: '#a855f7',
-            lightReactsToAudio: true
+            lightReactsToAudio: true,
+            globalLight: 1.0,
+            temperature: 0.0,
+            contrast: 1.0
         };
         
         // Groups
@@ -134,6 +137,9 @@ export class BackgroundSystem {
             uniform vec3 uBacklightColor;
             uniform vec3 uColor1;
             uniform vec3 uColor2;
+            uniform float uGlobalLight;
+            uniform float uTemperature;
+            uniform float uContrast;
             varying vec2 vUv;
             
             // Simple noise
@@ -150,6 +156,17 @@ export class BackgroundSystem {
                 float c = hash(i + vec2(0.0, 1.0));
                 float d = hash(i + vec2(1.0, 1.0));
                 return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+            }
+
+            vec3 applyTemperature(vec3 c, float temp) {
+                // negative = cool (blue), positive = warm (orange)
+                c.r += temp * 0.08;
+                c.b -= temp * 0.08;
+                return c;
+            }
+
+            vec3 applyContrast(vec3 c, float contrast) {
+                return (c - 0.5) * contrast + 0.5;
             }
             
             void main() {
@@ -174,10 +191,14 @@ export class BackgroundSystem {
                 float vignette = 1.0 - smoothstep(0.3, 0.9, dist);
                 color *= vignette * 0.7 + 0.3;
                 
-                // Apply brightness
-                color *= uBrightness * 0.15;
+                // Apply brightness + global light
+                color *= uBrightness * 0.15 * uGlobalLight;
                 
-                gl_FragColor = vec4(color, 1.0);
+                // Temperature & contrast
+                color = applyTemperature(color, uTemperature);
+                color = applyContrast(color, uContrast);
+                
+                gl_FragColor = vec4(max(color, 0.0), 1.0);
             }
         `;
 
@@ -192,7 +213,10 @@ export class BackgroundSystem {
                 uBacklightIntensity: { value: this.config.backlightIntensity },
                 uBacklightColor: { value: new THREE.Color(this.config.backlightColor) },
                 uColor1: { value: bgColor1 },
-                uColor2: { value: bgColor2 }
+                uColor2: { value: bgColor2 },
+                uGlobalLight: { value: 1.0 },
+                uTemperature: { value: 0.0 },
+                uContrast: { value: 1.0 }
             },
             vertexShader,
             fragmentShader,
@@ -403,9 +427,22 @@ export class BackgroundSystem {
             uniform vec3 uBacklightColor;
             uniform float uBacklightIntensity;
             uniform float uOpacity;
+            uniform float uGlobalLight;
+            uniform float uTemperature;
+            uniform float uContrast;
             
             varying float vAlpha;
             varying float vColorIndex;
+
+            vec3 applyTemperature(vec3 c, float temp) {
+                c.r += temp * 0.12;
+                c.b -= temp * 0.12;
+                return c;
+            }
+
+            vec3 applyContrast(vec3 c, float contrast) {
+                return (c - 0.5) * contrast + 0.5;
+            }
             
             void main() {
                 // Soft circle
@@ -421,7 +458,12 @@ export class BackgroundSystem {
                 // Mix in backlight color tint
                 color = mix(color, uBacklightColor, uBacklightIntensity * 0.08);
                 
-                gl_FragColor = vec4(color, alpha);
+                // Global adjustments
+                color *= uGlobalLight;
+                color = applyTemperature(color, uTemperature);
+                color = applyContrast(color, uContrast);
+                
+                gl_FragColor = vec4(max(color, 0.0), alpha);
             }
         `;
 
@@ -439,7 +481,10 @@ export class BackgroundSystem {
                 uColors: { value: colorArray },
                 uBacklightColor: { value: new THREE.Color(this.config.backlightColor) },
                 uBacklightIntensity: { value: this.config.backlightIntensity },
-                uOpacity: { value: opacity }
+                uOpacity: { value: opacity },
+                uGlobalLight: { value: 1.0 },
+                uTemperature: { value: 0.0 },
+                uContrast: { value: 1.0 }
             },
             vertexShader,
             fragmentShader,
@@ -639,6 +684,70 @@ export class BackgroundSystem {
     }
 
     setLightReactsToAudio(val) { this.config.lightReactsToAudio = val; }
+
+    setGlobalLight(val) {
+        this.config.globalLight = val;
+        this.syncGlobalUniforms();
+    }
+
+    setTemperature(val) {
+        this.config.temperature = val;
+        this.syncGlobalUniforms();
+    }
+
+    setContrast(val) {
+        this.config.contrast = val;
+        this.syncGlobalUniforms();
+    }
+
+    syncGlobalUniforms() {
+        const { globalLight, temperature, contrast } = this.config;
+
+        // Background quad
+        if (this.bgMaterial) {
+            this.bgMaterial.uniforms.uGlobalLight.value = globalLight;
+            this.bgMaterial.uniforms.uTemperature.value = temperature;
+            this.bgMaterial.uniforms.uContrast.value = contrast;
+        }
+
+        // Particle layers
+        Object.values(this.layers).forEach(layer => {
+            if (layer && layer.material.uniforms) {
+                layer.material.uniforms.uGlobalLight.value = globalLight;
+                layer.material.uniforms.uTemperature.value = temperature;
+                layer.material.uniforms.uContrast.value = contrast;
+            }
+        });
+
+        // Three.js lights — scale by globalLight
+        if (this.ambientLight) {
+            this.ambientLight.intensity = this.config.ambientIntensity * globalLight;
+        }
+        if (this.frontLight) {
+            this.frontLight.intensity = 2 * globalLight;
+        }
+        if (this.backLight) {
+            this.backLight.intensity = this.config.backlightIntensity * globalLight;
+        }
+        this.accentLights.forEach(l => {
+            l.intensity = 1.5 * globalLight;
+        });
+
+        // Apply temperature to Three.js accent lights (hue shift)
+        if (temperature !== 0) {
+            const warmColor = new THREE.Color(1, 0.85, 0.6);  // warm
+            const coolColor = new THREE.Color(0.6, 0.8, 1.0);  // cool
+            const tintColor = temperature > 0
+                ? warmColor.clone().lerp(new THREE.Color(1, 1, 1), 1 - temperature)
+                : coolColor.clone().lerp(new THREE.Color(1, 1, 1), 1 + temperature);
+
+            if (this.frontLight) {
+                this.frontLight.color.copy(tintColor);
+            }
+        } else if (this.frontLight) {
+            this.frontLight.color.set(0xffffff);
+        }
+    }
 
     // =========================================================
     // DISPOSE

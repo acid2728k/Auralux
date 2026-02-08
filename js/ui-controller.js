@@ -55,6 +55,14 @@ export class UIController {
             colorBacklight: document.getElementById('color-backlight'),
             toggleLightAudio: document.getElementById('toggle-light-audio'),
             
+            // Global
+            rangeGlobalLight: document.getElementById('range-global-light'),
+            globalLightValue: document.getElementById('global-light-value'),
+            rangeTemperature: document.getElementById('range-temperature'),
+            temperatureValue: document.getElementById('temperature-value'),
+            rangeContrast: document.getElementById('range-contrast'),
+            contrastValue: document.getElementById('contrast-value'),
+            
             // Scene
             rangeBloom: document.getElementById('range-bloom'),
             bloomValue: document.getElementById('bloom-value'),
@@ -118,6 +126,11 @@ export class UIController {
         this.bindRange('rangeBacklight', 'backlightValue', 'onBacklightChange', false);
         this.elements.colorBacklight?.addEventListener('input', (e) => this.emit('onBacklightColorChange', e.target.value));
         this.elements.toggleLightAudio?.addEventListener('change', (e) => this.emit('onLightAudioChange', e.target.checked));
+
+        // Global
+        this.bindRange('rangeGlobalLight', 'globalLightValue', 'onGlobalLightChange', false);
+        this.bindRange('rangeTemperature', 'temperatureValue', 'onTemperatureChange', false);
+        this.bindRange('rangeContrast', 'contrastValue', 'onContrastChange', false);
 
         // Scene
         this.bindRange('rangeBloom', 'bloomValue', 'onBloomChange', false);
