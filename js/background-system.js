@@ -173,26 +173,34 @@ export class BackgroundSystem {
                 vec2 center = vUv - 0.5;
                 float dist = length(center);
                 
-                // Base dark gradient
-                vec3 color = mix(uColor1, uColor2, dist * 1.5);
+                // Base background — lifted by global light
+                float baseBrightness = uGlobalLight * 0.04;
+                vec3 color = vec3(baseBrightness);
                 
-                // Ambient fill
-                color += uAmbient * 0.08;
+                // Gradient from preset colors
+                vec3 gradColor = mix(uColor1, uColor2, dist * 1.5);
+                color += gradColor * uGlobalLight * 0.5;
                 
-                // Backlight glow from center
-                float backlightMask = 1.0 - smoothstep(0.0, 0.7, dist);
-                color += uBacklightColor * uBacklightIntensity * backlightMask * 0.06;
+                // Ambient fill — raises the entire background
+                color += uAmbient * uGlobalLight * 0.12;
                 
-                // Subtle noise
-                float n = noise(vUv * 3.0 + uTime * 0.02) * 0.08;
-                color += n * uBrightness * 0.3;
+                // Backlight glow — radial bloom from center
+                float glowInner = 1.0 - smoothstep(0.0, 0.4, dist);
+                float glowOuter = 1.0 - smoothstep(0.0, 0.8, dist);
+                color += uBacklightColor * uBacklightIntensity * glowInner * 0.12;
+                color += uBacklightColor * uBacklightIntensity * glowOuter * 0.04;
+                
+                // Subtle animated noise
+                float n = noise(vUv * 3.0 + uTime * 0.02) * 0.06;
+                float n2 = noise(vUv * 8.0 - uTime * 0.01) * 0.03;
+                color += (n + n2) * uBrightness * uGlobalLight * 0.5;
                 
                 // Vignette
-                float vignette = 1.0 - smoothstep(0.3, 0.9, dist);
-                color *= vignette * 0.7 + 0.3;
+                float vignette = 1.0 - smoothstep(0.3, 0.95, dist);
+                color *= vignette * 0.6 + 0.4;
                 
-                // Apply brightness + global light
-                color *= uBrightness * 0.15 * uGlobalLight;
+                // Master brightness
+                color *= uBrightness;
                 
                 // Temperature & contrast
                 color = applyTemperature(color, uTemperature);

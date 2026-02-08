@@ -49,7 +49,7 @@ export class Visualizer {
 
     init() {
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x000000);
+        this.scene.background = null; // bg quad handles background
         this.updateFog();
 
         const aspect = window.innerWidth / window.innerHeight;
@@ -511,10 +511,28 @@ export class Visualizer {
 
     // Global
     setGlobalLight(val) {
+        this.settings.globalLight = val;
         this.backgroundSystem?.setGlobalLight(val);
         this.renderer.toneMappingExposure = 1.5 * val;
+        // Fog adapts to light level
+        if (this.scene.fog) {
+            const fogBrightness = Math.floor(val * 3);
+            this.scene.fog.color.setRGB(fogBrightness / 255, fogBrightness / 255, (fogBrightness + 2) / 255);
+        }
     }
-    setTemperature(val) { this.backgroundSystem?.setTemperature(val); }
+    setTemperature(val) {
+        this.settings.temperature = val;
+        this.backgroundSystem?.setTemperature(val);
+        // Shift fog color with temperature
+        if (this.scene.fog) {
+            const base = (this.settings.globalLight || 1) * 3 / 255;
+            this.scene.fog.color.setRGB(
+                base + val * 0.02,
+                base,
+                base - val * 0.02
+            );
+        }
+    }
     setContrast(val) { this.backgroundSystem?.setContrast(val); }
 
     // =====================================================
